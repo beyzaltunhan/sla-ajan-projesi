@@ -51,8 +51,7 @@ if __name__ == "__main__":
     n, rag_disi, sonuc = calistir()
     print(f"(a) öncelik kuralı (02) geri çağırma, {n} talep; (b) RAG dışı beklenen madde sayısı: {rag_disi} (ölçülmez)")
     for k, r in sonuc.items():
-        print(f"
-k={k}: tümü {r['tumu']}/{n} | en az biri {r['en_az_biri']}/{n}")
+        print(f"\nk={k}: tümü {r['tumu']}/{n} | en az biri {r['en_az_biri']}/{n}")
         print("  kaçırılanlar (talep, set, eksik 02 maddeleri):")
         for x in r["kacan"]:
             print("   ", x)
