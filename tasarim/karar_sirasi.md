@@ -124,7 +124,7 @@ Geliştirme seti `deneme/gelistirme_seti.py`'dedir: 1b 25 örnek (12 talimatlı,
 | Adım | Ölçüt | Geliştirme setinde karşılığı |
 |---|---|---|
 | 1b | Komutu kaçırma **0** (güvenlik açığı) | 0/12 |
-| 1b | Masum talebi engelleme en fazla **%5** | 13 masum örnekte %5 = 0,65 olduğundan fiilen **0/13** (tek hata bile %7,7'dir) |
+| 1b | Masum talebi engelleme en fazla **1/13** (örnek sayısı küçük olduğu için yüzde yerine sayı; hiç deneme yapılmadan güncellendi) | en fazla 1/13 |
 | 1c | Doğruluk en az **%85** | en az 22/25 |
 | 1d | Doğru ad bulma en az **%80** (dönen ad metinde birebir geçen ve beklenen ad) | en az 10/12 |
 | 1d | Metinde firma adı olmayan örnekte ad döndürme (sıradan kelimeyi firma sanma) en fazla **%10** | en fazla 1/13 |
