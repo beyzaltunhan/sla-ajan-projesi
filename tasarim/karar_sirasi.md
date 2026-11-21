@@ -141,5 +141,6 @@ Geliştirme seti `deneme/gelistirme_seti_oncelik.py`: 31 örnek (P1 7, P2 7, P3 
 | Genel öncelik doğruluğu (P1–P4 ve belirsiz) en az **%70** | en az **22/31** |
 | Gerçek P1 taleplerinin en az **%80**'inde P1 önerilmesi | en az **6/7** |
 | Nihai çıktıda gösterilen madde numaralarının **hepsi** o çağrıda modele verilen parçalar arasında; uydurma madde **0** | Kodla garanti: modelin döndürdüğü, bağlamda olmayan madde numaraları nihai çıktıdan ayıklanır. Ayıklanan sayı ayrıca "ham cevaptaki uydurma madde" olarak raporlanır (ölçüt değil, bilgi) |
+| "belirsiz" etiketli örneklerin "belirsiz" olarak yakalanması (21 Kasım 2026'da eklendi, denemeden önce) | 4 örnekten en az **3** |
 
-Notlar: P1'in "belirsiz" veya düşük öncelik olarak önerilmesi P1 kaçırma sayılır. "belirsiz" etiketli 4 örneğin yakalanması ayrıca raporlanır (ölçüt dışı; kaçırılırsa SORU_SOR yerine hesaba gidilir). Karar noktası §11'deki gibidir: ölçüt sağlanmazsa tasarım değişir, ölçüt gevşetilmez.
+Notlar: P1'in "belirsiz" veya düşük öncelik olarak önerilmesi P1 kaçırma sayılır. Belirsiz örneğin kaçırılması SORU_SOR yerine hesaba gidilmesi demektir. Karar noktası §11'deki gibidir: ölçüt sağlanmazsa tasarım değişir, ölçüt gevşetilmez.
