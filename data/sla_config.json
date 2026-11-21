@@ -1,0 +1,78 @@
+{
+  "_aciklama": "KURGUSAL firma. SLA kurallarının TEK KAYNAĞI: araçlar bu dosyadan okur, dokümanlar aynı değerleri metin olarak anlatır (tutarlilik_kontrolu.py karşılaştırır).",
+  "firma_adi": "Poyraz Bulut Yazılım A.Ş.",
+  "mesai": {
+    "baslangic": "09:00",
+    "bitis": "18:00",
+    "is_gunleri": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "tatiller": [
+    "2026-10-29",
+    "2027-01-01",
+    "2027-04-23",
+    "2027-05-01"
+  ],
+  "paketler": [
+    "standart",
+    "gelismis",
+    "kurumsal"
+  ],
+  "oncelikler": [
+    "P1",
+    "P2",
+    "P3",
+    "P4"
+  ],
+  "ilk_yanit_dk": {
+    "standart": {
+      "P1": 240,
+      "P2": 480,
+      "P3": 960,
+      "P4": 1440
+    },
+    "gelismis": {
+      "P1": 120,
+      "P2": 240,
+      "P3": 480,
+      "P4": 960
+    },
+    "kurumsal": {
+      "P1": 60,
+      "P2": 120,
+      "P3": 240,
+      "P4": 480
+    }
+  },
+  "yedi_yirmi_dort": [
+    {
+      "paket": "kurumsal",
+      "oncelik": "P1"
+    }
+  ],
+  "risk": {
+    "seviyeler": [
+      "NORMAL",
+      "YUKSEK",
+      "IHLAL"
+    ],
+    "yuksek_risk_orani_yuzde": 25
+  },
+  "kredi_yuzde": {
+    "gelismis": {
+      "P1": 3,
+      "P2": 1,
+      "aylik_tavan": 10
+    },
+    "kurumsal": {
+      "P1": 5,
+      "P2": 2,
+      "aylik_tavan": 20
+    }
+  }
+}

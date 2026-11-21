@@ -1,0 +1,75 @@
+{
+  "_aciklama": "KURGUSAL ve SENTETİK müşteri kayıtları. Gerçek firma/kişi ile ilgisi yoktur. aylik_ucret: KDV hariç aylık destek paketi bedeli (TL). bu_ay_kredi_yuzdesi: bu takvim ayında bu müşteriye uygulanmış toplam kredi yüzdesi. ozel_anlasma=true: sözleşmesinde standart SLA'dan farklı özel hükümler olan müşteri (kuralları dokümanlarda yoktur).",
+  "musteriler": [
+    {
+      "ad": "Anadolu Lojistik A.Ş.",
+      "paket": "gelismis",
+      "aylik_ucret": 30000,
+      "bu_ay_kredi_yuzdesi": 0,
+      "ozel_anlasma": false
+    },
+    {
+      "ad": "Anadolu Gıda Tarım A.Ş.",
+      "paket": "standart",
+      "aylik_ucret": 12000,
+      "bu_ay_kredi_yuzdesi": 0,
+      "ozel_anlasma": false
+    },
+    {
+      "ad": "Boğaziçi Medikal Ltd. Şti.",
+      "paket": "kurumsal",
+      "aylik_ucret": 60000,
+      "bu_ay_kredi_yuzdesi": 18,
+      "ozel_anlasma": false
+    },
+    {
+      "ad": "Karadeniz Tekstil A.Ş.",
+      "paket": "standart",
+      "aylik_ucret": 9000,
+      "bu_ay_kredi_yuzdesi": 0,
+      "ozel_anlasma": false
+    },
+    {
+      "ad": "Ege Turizm Hizmetleri A.Ş.",
+      "paket": "gelismis",
+      "aylik_ucret": 35000,
+      "bu_ay_kredi_yuzdesi": 10,
+      "ozel_anlasma": false
+    },
+    {
+      "ad": "Marmara Perakende A.Ş.",
+      "paket": "kurumsal",
+      "aylik_ucret": 90000,
+      "bu_ay_kredi_yuzdesi": 0,
+      "ozel_anlasma": false
+    },
+    {
+      "ad": "Trakya Otomotiv Yan Sanayi A.Ş.",
+      "paket": "gelismis",
+      "aylik_ucret": 25000,
+      "bu_ay_kredi_yuzdesi": 3,
+      "ozel_anlasma": false
+    },
+    {
+      "ad": "Akdeniz Enerji A.Ş.",
+      "paket": "kurumsal",
+      "aylik_ucret": 120000,
+      "bu_ay_kredi_yuzdesi": 0,
+      "ozel_anlasma": true
+    },
+    {
+      "ad": "Kapadokya Seramik Ltd. Şti.",
+      "paket": "standart",
+      "aylik_ucret": 8000,
+      "bu_ay_kredi_yuzdesi": 0,
+      "ozel_anlasma": false
+    },
+    {
+      "ad": "Toros Yapı Malzemeleri A.Ş.",
+      "paket": "gelismis",
+      "aylik_ucret": 40000,
+      "bu_ay_kredi_yuzdesi": 0,
+      "ozel_anlasma": true
+    }
+  ]
+}

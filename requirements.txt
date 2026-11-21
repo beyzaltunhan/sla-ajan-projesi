@@ -1,0 +1,4 @@
+chromadb>=1.5.9
+ollama>=0.6.3
+pydantic>=2.14.2
+pytest>=9.2.0
