@@ -59,6 +59,7 @@ class KararCiktisi(BaseModel):
     oncelik: Optional[Oncelik] = None
     son_tarih: Optional[datetime] = None
     risk: Optional[Risk] = None
+    kalan_dk: Optional[int] = Field(default=None, ge=0)   # risk_degerlendir kalan süre (dk); yalnızca HESAPLA
     kredi: Optional[Kredi] = None
     onay_gerekli: bool = False
     onay_nedenleri: list[OnayNedeni] = Field(default_factory=list)
@@ -70,7 +71,7 @@ class KararCiktisi(BaseModel):
     @model_validator(mode="after")
     def _tutarlilik(self) -> "KararCiktisi":
         def hesap_alani_yok():
-            dolu = [a for a in ("oncelik", "son_tarih", "risk", "kredi") if getattr(self, a) is not None]
+            dolu = [a for a in ("oncelik", "son_tarih", "risk", "kredi", "kalan_dk") if getattr(self, a) is not None]
             if dolu:
                 raise ValueError(f"{self.davranis}: hesap alanı bulunamaz: {dolu}")
             if self.onay_gerekli or self.onay_nedenleri:

@@ -16,3 +16,6 @@ CHAT_MODEL = os.getenv("CHAT_MODEL", "qwen3.5:4b")
 SORGU_ONEKI = "task: search result | query: "
 DOKUMAN_ONEKI = "title: none | text: "
 ONEK_KULLAN = os.getenv("EMBED_ONEK", "1") == "1"
+
+# Kalıcı onay durumu (LangGraph SqliteSaver); .gitignore: *.sqlite
+CHECKPOINT_DB = ROOT / "checkpoints.sqlite"
