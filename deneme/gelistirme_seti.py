@@ -129,3 +129,27 @@ FEWSHOT_1D = [
     ("Salı sabahı Ankara şubesinde bağlantı koptu.", None),
     ("Yeni Sipariş sayfası açılmıyor, aynı hatayı iki kişi aldı.", None),
 ]
+
+
+# ------------------------------------------------------------------ 1c, düzeltme turu (22 Kasım 2026)
+# Yeni özgün örnekler (ilk koşudaki hata KATEGORİSİNDEN esinlenildi; test metinleri kopyalanmadı/uyarlanmadı).
+# (metin, talep_turu, grup)  grup: kullanim (8) | kapsam_disi (4) | dokumanda_olmayan (4)
+# "kullanim" grubunun 8'inden biri anahtar-kelime tuzağıdır: "entegrasyon" geçen gerçek bir arıza bildirimi.
+GELISTIRME_1C_YENI = [
+    ("Orman Lojistik'ten yazıyoruz: müşteri listesini tarihe göre nasıl sıralarız, menüde bulamadık.", "destek_talebi", "kullanim"),
+    ("Panelde bildirim tercihlerini nereden değiştirebileceğimizi öğrenmek istiyoruz.", "destek_talebi", "kullanim"),
+    ("Yeni bir departman oluştururken yönetici alanını boş bırakmak sorun yaratır mı, ne önerirsiniz?", "destek_talebi", "kullanim"),
+    ("Nehir Gıda olarak soruyoruz: toplu kullanıcı yüklemek için hazır bir şablon dosyası var mı?", "destek_talebi", "kullanim"),
+    ("Çalışanlarımız şifrelerini kendileri sıfırlayabilir mi, bunun ayarı hangi ekranda?", "destek_talebi", "kullanim"),
+    ("Sipariş geçmişinde iki tarih arasını filtreleyebiliyor muyuz? Seçeneği göremedik.", "destek_talebi", "kullanim"),
+    ("Hesabımızdaki iki kullanıcıyı birleştirmek mümkün mü, adımları nelerdir?", "destek_talebi", "kullanim"),
+    ("Muhasebe entegrasyonumuz dün akşamdan beri veri çekmiyor, siparişler listeye düşmüyor, başka yolumuz da yok.", "destek_talebi", "kullanim"),
+    ("Erdem Plastik olarak sistemimize stok sayım cihazlarımızı bağlayacak yeni bir bağlantı katmanı yazmanızı talep ediyoruz.", "kapsam_disi", "kapsam_disi"),
+    ("Panele müşteri memnuniyet anketi modülü eklenmesini istiyoruz.", "kapsam_disi", "kapsam_disi"),
+    ("Ekibimize iş akışı tasarımı konusunda iki günlük danışmanlık verebilir misiniz?", "kapsam_disi", "kapsam_disi"),
+    ("Sorunlarımızın en geç kaç saatte çözüleceğini sözleşmeye yazar mısınız?", "kapsam_disi", "kapsam_disi"),
+    ("Paketimizi bir üst pakete geçirirsek fiyat farkı ne kadar olur?", "dokumanda_olmayan", "dokumanda_olmayan"),
+    ("Destek ekibinize e-posta dışında WhatsApp'tan ulaşabilir miyiz, numara nedir?", "dokumanda_olmayan", "dokumanda_olmayan"),
+    ("Taleplerimizi onaylayan yöneticinin adını ve unvanını öğrenebilir miyiz?", "dokumanda_olmayan", "dokumanda_olmayan"),
+    ("Destek sözleşmemizin yenileme tarihi ne zaman, kendiliğinden uzuyor mu?", "dokumanda_olmayan", "dokumanda_olmayan"),
+]
