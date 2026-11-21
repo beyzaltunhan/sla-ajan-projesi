@@ -9,6 +9,7 @@ Tasarım ilkeleri:
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
@@ -203,3 +204,33 @@ def musteri_bul(ad: str, musteriler: list[dict]) -> dict | None:
     """Geriye dönük uyumluluk: yalnızca tek eşleşmede kayıt, aksi halde None."""
     durum, kayit = musteri_ara(ad, musteriler)
     return kayit if durum == "TEK" else None
+
+
+# ------------------------------------------------- metinde müşteri arama (1a)
+def _kelimeler(metin: str) -> list[str]:
+    """Normalize eder (küçük harf, Türkçe karakter); harf/rakam dışı her şey (kesme işareti dâhil) ayraçtır."""
+    return re.findall(r"[a-z0-9]+", _norm(metin))
+
+
+def musteri_metinde_ara(metin: str, musteriler: list[dict]) -> tuple[str, dict | None]:
+    """Talep METNİNDE kayıtlı müşteri adı arar (karar_sirasi.md §3.1, adım 1a). LLM kullanmaz.
+
+    Her müşterinin adının baştan başlayan en uzun kelime dizisi metinde aranır
+    ("Toros Yapı'dan" -> kesme işareti ayraç olduğundan eşleşir; "Anadolu" kısa adı kabul edilir).
+    En uzun eşleşmeyi tek müşteri veriyorsa ("TEK", kayıt); birden fazla müşteri aynı
+    uzunlukta eşleşiyorsa ("BELIRSIZ", None); hiçbiri eşleşmiyorsa ("BULUNAMADI", None).
+    """
+    kelimeler = _kelimeler(metin)
+    en_iyi: dict[int, int] = {}                      # müşteri indeksi -> en uzun eşleşen önek uzunluğu
+    for i, m in enumerate(musteriler):
+        ad = _kelimeler(m["ad"])
+        for uzunluk in range(len(ad), 0, -1):
+            onek = ad[:uzunluk]
+            if any(kelimeler[j:j + uzunluk] == onek for j in range(len(kelimeler) - uzunluk + 1)):
+                en_iyi[i] = uzunluk
+                break
+    if not en_iyi:
+        return "BULUNAMADI", None
+    enuzun = max(en_iyi.values())
+    adaylar = [i for i, u in en_iyi.items() if u == enuzun]
+    return ("TEK", musteriler[adaylar[0]]) if len(adaylar) == 1 else ("BELIRSIZ", None)

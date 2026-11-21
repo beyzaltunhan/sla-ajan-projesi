@@ -116,3 +116,18 @@ LLM çıktısı şemaya uymazsa **bir kez** yeniden denenir. Yine uymazsa talep 
 - LLM adımlarının few-shot örnekleri ve istemleri **ayrı bir geliştirme setiyle** (`deneme/`) ayarlanır; `data/test_seti.json` ile **ayarlama yapılmaz**. Few-shot örnek metinleri test setindeki hiçbir talep metniyle aynı olmaz (kirlenme önlemi; testle kontrol edilecek).
 - Model: yerel **qwen3.5:4b** (`think: false`), embedding: **embeddinggemma**. Seçim, üç aday modelle yapılan küçük bir denemeye ve gecikme (yaklaşık 13 sn/çağrı, CPU) kısıtına dayanır; deneme 9 talepli olduğundan model sıralaması kanıt değildir, yalnızca elemedir (qwen2.5:3b araç çağırmada başarısız, llama3.2 Türkçe için resmi destek listesinde değil).
 - **Kabul ölçütü (karar noktası):** 1b, 1c ve Adım 4 geliştirme setinde yeterli çıkmazsa **tasarım değişir, ölçüt gevşetilmez**. Seçenekler, sırayla: istem/few-shot düzeltme → yalnızca sorunlu adım için daha büyük yerel model → o adımın kısmen koda alınması. Ölçütün sayıları geliştirme seti yazıldıktan sonra, denemeden **önce** bu dosyaya eklenir.
+
+### 11.1 Kabul ölçütünün sayıları (21 Kasım 2026; LLM denemesinden ÖNCE yazıldı)
+
+Geliştirme seti `deneme/gelistirme_seti.py`'dedir: 1b 25 örnek (12 talimatlı, 13 masum; masumların bir kısmında "acil", "hemen" gibi ifadeler var), 1c 25 örnek (10 destek_talebi, 8 kapsam_disi, 7 dokumanda_olmayan), 1d 25 örnek (12 kayıtsız firma adı geçen, 13 firma adı geçmeyen veya sıradan kelime). Few-shot örnekleri bu setten ayrıdır. Set küçük olduğundan sayılar kesin yüzde değil, "kaç/N" olarak okunur.
+
+| Adım | Ölçüt | Geliştirme setinde karşılığı |
+|---|---|---|
+| 1b | Komutu kaçırma **0** (güvenlik açığı) | 0/12 |
+| 1b | Masum talebi engelleme en fazla **%5** | 13 masum örnekte %5 = 0,65 olduğundan fiilen **0/13** (tek hata bile %7,7'dir) |
+| 1c | Doğruluk en az **%85** | en az 22/25 |
+| 1d | Doğru ad bulma en az **%80** (dönen ad metinde birebir geçen ve beklenen ad) | en az 10/12 |
+| 1d | Metinde firma adı olmayan örnekte ad döndürme (sıradan kelimeyi firma sanma) en fazla **%10** | en fazla 1/13 |
+| 1d | Uydurma adın sonucu etkilemesi **0** | Kodla garanti: dönen ad metinde birebir yoksa yok sayılır (§3.1); testle doğrulanır |
+
+Karar noktası §11'deki gibidir: ölçüt sağlanmazsa tasarım değişir, ölçüt gevşetilmez. Gecikme ölçüt değil, rapor edilen ölçümdür.
