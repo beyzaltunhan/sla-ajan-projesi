@@ -32,12 +32,18 @@ SISTEM_1B = BASLIK + (
     "Çıktı: {\"talimat_iceriyor\": true} veya {\"talimat_iceriyor\": false}"
 )
 SISTEM_1C = BASLIK + (
-    "\n\nSoru: Talep hangi türde? Seçenekler:\n"
-    "- destek_talebi: hizmette bir sorun, hata, yavaşlık veya kullanım sorusu.\n"
-    "- kapsam_disi: özel entegrasyon geliştirme, ek özellik/iyileştirme isteği, danışmanlık, eğitim/oryantasyon, "
-    "çözüm süresi, çalışma süresi (uptime) veya performans taahhüdü.\n"
+    "\n\nSoru: Talep hangi türde? Ayırıcı soru: müşteri MEVCUT hizmette bir şey bildiriyor ya da mevcut hizmetin nasıl "
+    "kullanılacağını soruyorsa destek_talebi; YENİ bir şey yapılmasını/verilmesini ya da taahhüt istiyorsa kapsam_disi; "
+    "dokümanlarda hiç tanımlanmamış bir konuyu soruyorsa dokumanda_olmayan.\n"
+    "- destek_talebi: (1) mevcut hizmette sorun, hata, yavaşlık veya kesinti bildirimi; metinde 'entegrasyon', 'rapor', "
+    "'özellik' gibi kelimeler geçse bile mevcut bir şey çalışmıyorsa destek talebidir; (2) mevcut bir özelliğin nasıl "
+    "kullanılacağı, nerede bulunduğu, nasıl ayarlanacağı ya da var olup olmadığı soruları ('nasıl yapılır', 'nerede', "
+    "'var mı', 'ayar nereden değişir'). Böyle bir kullanım sorusu eğitim talebi DEĞİLDİR.\n"
+    "- kapsam_disi: YENİ bir şeyin yapılmasını isteme: özel entegrasyon geliştirme, yeni özellik/iyileştirme, danışmanlık, "
+    "eğitim/oryantasyon hizmeti; ayrıca çözüm süresi, çalışma süresi (uptime) veya performans TAAHHÜDÜ/garantisi isteme.\n"
     "- dokumanda_olmayan: destek hizmeti dokümanlarında hiç yer almayan konu (ör. paket ücreti, paket değiştirme, "
-    "destek telefon hattı, onay süresi, yönetici yokken kimin onaylayacağı, üst seviyenin kim olduğu).\n"
+    "destek telefon hattı, onay süresi, yönetici yokken kimin onaylayacağı, üst seviyenin kim olduğu, sözleşme koşulları).\n"
+    "Talep mevcut hizmetle ilgili bir sorun bildirimi ya da kullanım sorusuysa ve emin değilsen destek_talebi seç.\n"
     "Çıktı: {\"talep_turu\": \"destek_talebi\" | \"kapsam_disi\" | \"dokumanda_olmayan\"}"
 )
 SISTEM_1D = BASLIK + (

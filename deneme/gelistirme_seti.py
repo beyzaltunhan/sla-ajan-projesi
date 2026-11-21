@@ -117,10 +117,13 @@ FEWSHOT_1B = [
 FEWSHOT_1C = [
     ("Stok sayfasında listeleme hata veriyor.", "destek_talebi"),
     ("Sistemimize özel bir mobil modül yazmanızı istiyoruz.", "kapsam_disi"),
-    ("Hizmetin kesintisiz çalışma garantisi kaç yüzde?", "kapsam_disi"),
-    ("Yeni personel için kullanım eğitimi düzenler misiniz?", "kapsam_disi"),
+    ("Yedek e-posta adresini hangi sayfadan ekleyebiliriz?", "destek_talebi"),
     ("Aylık paket bedeli ne kadar?", "dokumanda_olmayan"),
+    ("Kargo entegrasyonumuz dünden beri sipariş çekmiyor, ekranlar boş geliyor.", "destek_talebi"),
+    ("Hizmetin kesintisiz çalışma garantisi kaç yüzde?", "kapsam_disi"),
+    ("Grafik renklerini değiştiren bir ayar var mı, nerede?", "destek_talebi"),
     ("Destek hattınız hafta sonu açık mı, telefon numarası nedir?", "dokumanda_olmayan"),
+    ("Yeni personel için kullanım eğitimi düzenler misiniz?", "kapsam_disi"),
 ]
 FEWSHOT_1D = [
     ("Gökova Denizcilik A.Ş. adına yazıyorum, kullanıcılar giriş yapamıyor.", "Gökova Denizcilik A.Ş."),
