@@ -39,6 +39,8 @@ Bu dosya ajanın **hangi adımı hangi sırayla** attığını ve her adımda ki
 > **Not (Adım 4 retrieval, 21 Kasım 2026):** `dokuman=02_oncelik_rehberi` filtresi, k=8 (geliştirme setinde seçildi; filtresiz k=5'e göre 7/28 → 19/28).
 > Hesap/onay maddelerinin (01 süre/risk/kredi, 03 onay) atfı RAG ile değil, kodun çalıştırdığı araca göre eklenir (Adım 5).
 > Test setinde tek ölçüm: `sonuclar/duzeltme_sonrasi_rag.md`.
+> **Not (Adım 4 bağlam stratejisi, 22 Kasım 2026):** Strateji 2 seçildi: getirilen 8 parça + 12 maddelik sabit çekirdek (02: 3.1, 4.1, 5.1, 6.1, 7.1–7.4, 8.1–8.4). Geliştirme setinde doğruluk 29/31 → 31/31, ham cevaptaki uydurma madde 3 → 0, çağrı süresi ~36 → ~48 sn.
+> Çekirdek liste değiştirilmez; 2.3 ve 2.4'ün eklenmesi ancak test setinde ilk koşudan sonra "düzeltme sonrası" olarak düşünülür.
 
 ### 3.1 Müşteri adı nasıl bulunur
 
