@@ -131,3 +131,15 @@ Geliştirme seti `deneme/gelistirme_seti.py`'dedir: 1b 25 örnek (12 talimatlı,
 | 1d | Uydurma adın sonucu etkilemesi **0** | Kodla garanti: dönen ad metinde birebir yoksa yok sayılır (§3.1); testle doğrulanır |
 
 Karar noktası §11'deki gibidir: ölçüt sağlanmazsa tasarım değişir, ölçüt gevşetilmez. Gecikme ölçüt değil, rapor edilen ölçümdür.
+
+### 11.2 Adım 4 (kaynaklı öncelik önerisi) kabul ölçütü (21 Kasım 2026; LLM denemesinden ÖNCE yazıldı)
+
+Geliştirme seti `deneme/gelistirme_seti_oncelik.py`: 31 örnek (P1 7, P2 7, P3 8, P4 5, belirsiz 4); "acil" tuzağı, kullanıcı sayısı olmayan, geçici çözümü olan örnekler dahil. Few-shot örnekleri (6) bu setten ve test setinden ayrıdır. Karşılaştırılacak iki bağlam stratejisi: (1) yalnızca getirilen 8 parça (`dokuman=02`, k=8); (2) getirilen 8 parça + sabit çekirdek kural hükümleri (3.1, 4.1, 5.1, 6.1, 7.x, 8.x). Ölçüt, seçilecek strateji için geçerlidir; her ikisi de raporlanır.
+
+| Ölçüt | Geliştirme setinde karşılığı |
+|---|---|
+| Genel öncelik doğruluğu (P1–P4 ve belirsiz) en az **%70** | en az **22/31** |
+| Gerçek P1 taleplerinin en az **%80**'inde P1 önerilmesi | en az **6/7** |
+| Nihai çıktıda gösterilen madde numaralarının **hepsi** o çağrıda modele verilen parçalar arasında; uydurma madde **0** | Kodla garanti: modelin döndürdüğü, bağlamda olmayan madde numaraları nihai çıktıdan ayıklanır. Ayıklanan sayı ayrıca "ham cevaptaki uydurma madde" olarak raporlanır (ölçüt değil, bilgi) |
+
+Notlar: P1'in "belirsiz" veya düşük öncelik olarak önerilmesi P1 kaçırma sayılır. "belirsiz" etiketli 4 örneğin yakalanması ayrıca raporlanır (ölçüt dışı; kaçırılırsa SORU_SOR yerine hesaba gidilir). Karar noktası §11'deki gibidir: ölçüt sağlanmazsa tasarım değişir, ölçüt gevşetilmez.
