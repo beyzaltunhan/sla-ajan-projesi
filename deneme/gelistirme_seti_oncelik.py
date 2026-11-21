@@ -42,3 +42,20 @@ FEWSHOT_ONCELIK = [
     ("ÇOK ACİL, HEMEN! Ana sayfadaki logo biraz kaymış, işimiz aksamıyor.", "P3"),
     ("Çalışmıyor, bakın lütfen.", "belirsiz"),
 ]
+
+
+# ---------------------------------------------------------------- Düzeltme turu (22 Kasım 2026)
+# Yeni özgün örnekler (ilk koşudaki hata KATEGORİSİNDEN esinlenildi; test metinleri kopyalanmadı/uyarlanmadı).
+# (metin, öncelik, grup)  grup: gecici_cozum (6: P3, biri P4 tuzağı) | gecici_cozum_yok (4: P2; aşırı düzeltmeyi yakalar)
+GELISTIRME_ONCELIK_YENI = [
+    ("Ilgın Boya olarak yazıyoruz: müşteri bakiye raporunda bir sütunun toplamı hatalı çıkıyor, hesap makinesiyle kontrol edip devam ediyoruz, diğer ekranlar normal.", "P3", "gecici_cozum"),
+    ("Sevkiyat çıktısı ekranı bugün açılmıyor ama depodan gelen dosyadan elle çıktı alıp işi sürdürüyoruz, yalnızca iki kişi kullanıyor. Bulut Kâğıt.", "P3", "gecici_cozum"),
+    ("Çiçek Market: ödeme özeti sayfasında tutar bazen sıfır görünüyor, sayfayı yenileyince düzeliyor, satışlarımız etkilenmiyor.", "P3", "gecici_cozum"),
+    ("Dağ Elektrik, fatura gönderme düğmesi çalışmıyor; faturaları e-postayla gönderip kayda elle işliyoruz, bu yol bize sorun olmuyor.", "P3", "gecici_cozum"),
+    ("Kumsal Otel: stok sayım ekranı çok yavaş açılıyor, yirmi saniye kadar bekleyince açılıyor ve işimiz aksamıyor.", "P3", "gecici_cozum"),
+    ("Yıldızlı Sigorta: raporları şimdilik elle derleyip gönderiyoruz, otomatik zamanlama özelliği olup olmadığını öğrenmek istiyoruz; sistemde hata yok.", "P4", "gecici_cozum"),
+    ("Alp Kimya: sipariş onay ekranı hiç çalışmıyor, onay veremiyoruz ve başka yoldan da işlem yapamıyoruz, diğer modüller sorunsuz.", "P2", "gecici_cozum_yok"),
+    ("Sedir Ambalaj'dan yazıyoruz: ihracat belgesi oluşturma modülü açılmıyor, belge çıkaramıyoruz ve alternatif yöntemimiz yok; sistemin geri kalanı çalışıyor.", "P2", "gecici_cozum_yok"),
+    ("Sipariş takip sayfası her denemede zaman aşımına düşüyor, kargo durumunu göremiyoruz ve başka yerden de bakamıyoruz; diğer sayfalar açık. Tuzla Denizcilik.", "P2", "gecici_cozum_yok"),
+    ("Mercan Tekstil: cari hesap ekstresi alınamıyor, ekstre ekranı hata veriyor ve muhasebe kapanışı için başka bir yolumuz yok, uygulamanın diğer bölümleri çalışıyor.", "P2", "gecici_cozum_yok"),
+]
