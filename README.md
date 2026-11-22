@@ -31,3 +31,39 @@ streamlit run arayuz/uygulama.py
 7. Yedek plan: model/ağ sorunu olursa **Kayıtlı Çalıştırmalar** sekmesi (canlı değil, etiketli) gösterilebilir.
 
 Süre beklentisi (ısınmış model, CPU): komutlu talep ~12 sn; hesaplı talep ~60–100 sn.
+
+## MCP sunucusu
+
+`mcp_sunucusu.py`, SLA hesap araçlarını MCP (Model Context Protocol) üzerinden dışarı açar; böylece bir MCP istemcisi
+(ör. Claude Desktop) müşteri arama ve SLA hesaplarını doğrudan çağırabilir. Ollama gerekmez, model çağrısı yapılmaz.
+
+```
+python mcp_sunucusu.py        # stdio üzerinden çalışır
+```
+
+| Araç | Ne yapar |
+|---|---|
+| `musteri_ara` | Firma adını kayıtlı müşterilerde arar (TEK / BELIRSIZ / YOK / BOS) |
+| `son_tarih_hesapla` | Talep zamanı + paket + öncelikten ilk yanıt son tarihini hesaplar (mesai, tatil, 7/24) |
+| `risk_degerlendir` | NORMAL / YUKSEK / IHLAL riskini ve kalan süreyi verir |
+| `kredi_hesapla` | Hizmet kredisi önerisini (yüzde, tutar, neden) hesaplar; uygulamaz |
+
+Neden yalnızca bunlar: ajanın LLM adımları (komut tespiti, talep türü, öncelik önerisi) küçük bir yerel modele ve istemlere
+bağlıdır; dışarı açılırsa her çağrı yavaş ve belirsiz olur. Deterministik hesaplar ise aynı girdide hep aynı sonucu verir
+ve güvenle paylaşılabilir. Araçlar `sla_araclari.py` fonksiyonlarını sarmalar, mantık kopyalanmaz.
+
+Claude Desktop yapılandırma örneği (`claude_desktop_config.json`; yolları kendi kurulumunuza göre değiştirin):
+
+```json
+{
+  "mcpServers": {
+    "sla-hesap-araclari": {
+      "command": "python",
+      "args": ["C:/projeler/sla-ajan-projesi/proje/mcp_sunucusu.py"]
+    }
+  }
+}
+```
+
+Not: Bu yapılandırma gerçek bir MCP istemcisiyle (Claude Desktop) denenmedi; sunucu yalnızca testlerde bir MCP istemci
+oturumuyla ve ayrı süreç olarak stdio üzerinden doğrulandı.
