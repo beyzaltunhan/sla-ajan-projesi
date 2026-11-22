@@ -90,11 +90,13 @@ section[data-testid="stSidebar"] * {{ white-space: normal; overflow-wrap: anywhe
 .bildirim .zaman-sag {{ margin-left: auto; }}
 .bildirim .bb {{ font-weight: 700; font-size: 1.1rem; color: {LACIVERT}; }}
 .bildirim .bm {{ margin: .2rem 0 .3rem 0; }}
-.kpi {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: .6rem 0 .5rem 0; align-items: stretch; }}
-.kpi .kart {{ display: flex; flex-direction: column; justify-content: flex-start; min-height: 5.6rem; padding: .6rem .8rem; }}
+.kpi {{ display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: .6rem 0 .5rem 0; align-items: stretch; }}
+@media (max-width: 1150px) {{ .kpi {{ grid-template-columns: repeat(3, minmax(0, 1fr)); }} }}
+@media (max-width: 640px) {{ .kpi {{ grid-template-columns: minmax(0, 1fr); }} }}
+.kpi .kart {{ display: flex; flex-direction: column; justify-content: flex-start; min-height: 5.6rem; padding: .55rem .7rem; min-width: 0; }}
 .kpi .kart .et {{ font-size: .72rem; }}
 .kpi .kart .de {{ font-size: 1.15rem; }}
-.kpi .kart .al {{ font-size: .75rem; }}
+.kpi .kart .al {{ font-size: .72rem; overflow-wrap: anywhere; }}
 .silik {{ font-size: .78rem; color: #8592a8; margin-top: .25rem; }}
 .sade-not {{ font-size: .85rem; color: #5b6b86; background: #f0f3f8; border-radius: 8px; padding: .4rem .7rem; margin: .3rem 0; }}
 </style>

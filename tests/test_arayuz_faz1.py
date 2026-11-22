@@ -52,7 +52,7 @@ def test_demo1_engelle_hesap_karti_yok_karar_karti_var():
     at = _calistir("Demo 1")
     assert not at.exception
     m = _md(at)
-    assert 'class="kpi"' not in m and '<div class="et">Karar</div>' in m
+    assert m.count('class="kpi"') == 1 and '<div class="et">Karar</div>' in m and '<div class="et">Müşteri</div>' in m
     assert "Onay durumu" not in m and "Kalan süre" not in m
     assert "Bu talep işlenmedi:" in m
     assert not [b for b in at.button if b.label in ("Onayla", "Reddet")]      # ENGELLE'de onay yok
@@ -63,3 +63,37 @@ def test_adim_zaman_cizgisi_acik_ve_ayrinti_kapali():
     ex = {e.label: e for e in at.expander}
     assert ex["Adım zaman çizgisi"].proto.expanded is True
     assert ex["Ayrıntı"].proto.expanded is False
+
+
+def test_sonuc_sirasi_demo2():
+    """başlık → KPI → müşteri/paket → gerekçe → onay (kayıtta pasif) → zaman çizgisi → kaynaklar → Ayrıntı → Ham JSON."""
+    at = _calistir("Demo 2")
+    m = _md(at)
+    sira = ['sonuc-baslik', 'class="kpi"', 'Paket: ', 'Gerekçe / özet', 'Kaynak maddeler']
+    pos = [m.index(x) for x in sira]
+    assert pos == sorted(pos)
+    etk = [e.label for e in at.expander]
+    assert etk.index("Adım zaman çizgisi") < etk.index("Ayrıntı") < etk.index("Ham JSON (KararCiktisi)")
+    assert not at.exception
+
+
+def test_kaynak_maddeleri_tek_satir_kapali_expander():
+    at = _calistir("Demo 2")
+    madde = [e for e in at.expander if e.label.startswith("Madde ")]
+    assert madde and all(not e.proto.expanded for e in madde)
+    assert any("Madde 4.1" in e.label and "Doküman 02 Öncelik Rehberi" in e.label for e in madde)
+    assert any(e.label.startswith("Süre ve mesai") for e in at.expander)             # kategori açılırları duruyor
+
+
+def test_kpi_css_tek_satir_bes_esit_sutun():
+    from arayuz import stil
+    assert "repeat(5, minmax(0, 1fr))" in stil.CSS
+    assert "repeat(3, minmax(0, 1fr))" in stil.CSS and "max-width: 640px" in stil.CSS        # dar ekranda 3+2 / alt alta
+
+
+def test_onay_karti_sade():
+    import inspect
+    from arayuz import bilesenler
+    k = inspect.getsource(bilesenler.onay_paneli)
+    assert "Yönetici onayı gerekiyor" in k and "Onay nedenleri" in k and "Gerekçe (Reddet için zorunlu)" in k
+    assert 'S.kart(' not in k and "paket[\"mesaj\"]" not in k                              # kart ve tekrar eden özet yok

@@ -174,27 +174,34 @@ def isle_canli(metin: str, kayit: datetime, simdi: datetime, soru_soruldu: bool 
 
 
 # ------------------------------------------------------------------ sonuç kartı (canlı ve kayıtlı ortak)
-def sonuc_goster(s: dict, kayit: dict | None = None):
-    """Bir talebin sonucu. `kayit` verilirse 'önceden çalıştırılmış kayıt' etiketi gösterilir (asla canlı gibi görünmez)."""
+def sonuc_goster(s: dict, kayit: dict | None = None, onay=None):
+    """Bir talebin sonucu. `kayit` verilirse 'önceden çalıştırılmış kayıt' etiketi gösterilir (asla canlı gibi görünmez).
+    Sıra: başlık → KPI şeridi → müşteri/paket → gerekçe → onay kartı (`onay` çağrısı) → adım çizgisi → kaynaklar → Ayrıntı → Ham JSON."""
     c = s.get("cikti")
     d = (c or {}).get("davranis")
     if kayit:
         S.html(f'<div class="kayitli">Önceden çalıştırılmış kayıt, canlı değil · kayıt tarihi: {S.kac(kayit["kayit_tarihi"])}</div>')
     S.html('<div class="sonuc-baslik">' + S.davranis_rozeti(d) + f'<span class="ba">{S.kac(B.davranis_basligi(c, s["durum"]))}</span>'
            f'<span class="teknik">toplam {S.kac(B.sure_yaz(s.get("toplam_sn")))}</span></div>')
-    with st.expander("Adım zaman çizgisi", expanded=True):
-        S.html(S.zaman_cizgisi(B.adim_satirlari(s.get("adim_sureleri", []))))
     kart = B.durum_karti(c, s.get("hata"), (st.session_state.get("isinma") or {}).get("durum") == "hata")
     if kart:
         if c and c.get("davranis"):
-            S.html(S.kartlar([S.kart("Karar", S.davranis_rozeti(c["davranis"])),
-                              S.kart("Müşteri", S.kac(c.get("musteri") or "—"))]))
+            S.html(S.kpi_seridi([S.kart("Karar", S.davranis_rozeti(c["davranis"])),
+                                 S.kart("Müşteri", S.kac(c.get("musteri") or "—"))]))
         if kart[0] == "hata":
             S.html(f'<div class="hatakart">{md_sade(kart[1])}</div>')
         else:
             S.html(f'<div class="sakin">{md_sade(kart[1])}</div>')
     else:
         _hesapla_goster(c, s)
+    if onay:
+        onay()
+    if s.get("onay_sonucu"):
+        _karar_karti(s["onay_sonucu"])
+    with st.expander("Adım zaman çizgisi", expanded=True):
+        S.html(S.zaman_cizgisi(B.adim_satirlari(s.get("adim_sureleri", []))))
+    if c and not kart:
+        _kaynaklar_goster(c["kaynaklar"])
     with st.expander("Ayrıntı"):
         teknik = [f"teknik durum: {s['durum']}"]
         if s.get("thread_id"):
@@ -204,11 +211,9 @@ def sonuc_goster(s: dict, kayit: dict | None = None):
         if c and c.get("onay_nedenleri"):
             teknik.append("onay nedenleri: " + B.onay_nedenleri_yaz(c["onay_nedenleri"]))
         st.caption(" · ".join(teknik))
-        if c:
-            st.markdown("**Ham JSON (KararCiktisi)**")
+    if c:
+        with st.expander("Ham JSON (KararCiktisi)"):
             st.json(c)
-    if s.get("onay_sonucu"):
-        _karar_karti(s["onay_sonucu"])
 
 
 def _onay_durumu(c: dict, s: dict) -> tuple[str, str]:
@@ -233,7 +238,6 @@ def _hesapla_goster(c: dict, s: dict | None = None):
         S.kart("Onay durumu", S.rozet(ad, sinif))]))
     S.html(f'<div class="silik">{S.kac(c["musteri"])} · Paket: {S.kac(str(c["paket"]).capitalize())}</div>')
     S.html(f'<p style="margin:.6rem 0"><b>Gerekçe / özet:</b> {S.kac(c["mesaj"])}</p>')
-    _kaynaklar_goster(c["kaynaklar"])
 
 
 def _kaynak_html(k: dict) -> str:
@@ -246,8 +250,10 @@ def _kaynak_html(k: dict) -> str:
 def _kaynaklar_goster(kaynaklar: list[dict]):
     ana, diger = B.kaynaklari_grupla(B.kaynak_listesi(kaynaklar))
     st.markdown("#### Kaynak maddeler")
-    if ana:
-        S.html("".join(_kaynak_html(k) for k in ana))
+    for k in ana:
+        baslik = f" — {k['baslik']}" if k["baslik"] else ""
+        with st.expander(f"Madde {k['madde']}{baslik} · {k['dokuman']}"):
+            S.html("<br>".join(md_sade(x) for x in k["satirlar"]))
     for grup, liste in diger.items():
         with st.expander(f"{grup} ({len(liste)} madde)"):
             S.html("".join(_kaynak_html(k) for k in liste))
@@ -268,20 +274,13 @@ def _karar_karti(o: dict):
 
 # ------------------------------------------------------------------ Onay
 def onay_paneli(tid: str, paket: dict, anahtar: str):
-    """Onay paketi özeti + Onayla/Reddet. Reddet için gerekçe zorunludur (kuralı ajan uygular; boşsa ajanın hatası gösterilir)."""
+    """Sade onay kartı + Onayla/Reddet. Reddet için gerekçe zorunludur (kuralı ajan uygular; boşsa ajanın hatası gösterilir)."""
     ss = st.session_state
     with st.container(key="onay_karti" if anahtar == "son" else f"onay_karti_{anahtar}"):
         st.markdown("### Yönetici onayı gerekiyor")
-        k = paket.get("kredi") or {}
-        S.html(S.kartlar([
-            S.kart("Müşteri", S.kac(paket["musteri"]), alt=f"Paket: {paket['paket']}", genis=True),
-            S.kart("Öncelik / risk", S.oncelik_rozeti(paket["oncelik"]) + " " + S.risk_rozeti(paket["risk"])),
-            S.kart("Kredi önerisi", S.kac(f"%{k.get('yuzde', 0):g} · {k.get('tutar', 0):,.0f} TL".replace(",", ".")))]))
-        st.markdown(f"**Onay nedenleri:** {B.onay_nedenleri_yaz(paket['onay_nedenleri'])} · "
-                    f"**Son tarih:** {B.tarih_yaz(paket['son_tarih'])} · **Kalan:** {B.kalan_sure_yaz(paket.get('kalan_dk'))}")
-        st.caption(paket["mesaj"] + f"  (talep: {tid})")
+        st.markdown(f"**Onay nedenleri:** {B.onay_nedenleri_yaz(paket['onay_nedenleri'])}")
         gerekce = st.text_input("Gerekçe (Reddet için zorunlu)", key=f"gerekce_{anahtar}")
-        c1, c2 = st.columns(2)
+        c1, c2, _bos = st.columns([1, 1, 8])
         karar = "ONAYLA" if c1.button("Onayla", key=f"onayla_{anahtar}", type="primary") else \
             ("REDDET" if c2.button("Reddet", key=f"reddet_{anahtar}") else None)
         if karar:
@@ -299,6 +298,11 @@ def onay_paneli(tid: str, paket: dict, anahtar: str):
                 st.rerun()
         if tid in ss.onay_hatasi:
             st.error(ss.onay_hatasi[tid])
+        if anahtar == "son":
+            with st.expander("Ayrıntı"):
+                st.caption(f"talep: {tid}")
+        else:                                           # liste zaten bir açılır kutu içinde (iç içe açılır kutu olmaz)
+            st.caption(f"talep: {tid}")
 
 
 def bekleyen_onaylar_paneli(haric: str | None = None):
@@ -325,9 +329,8 @@ def talep_sekmesi():
         isle_canli(*girdi)
     if ss.son:
         st.markdown(f"**Talep:** {ss.son['talep']}")
-        sonuc_goster(ss.son)
-        if ss.son["durum"] == "BEKLEMEDE" and ss.son.get("cikti"):
-            onay_paneli(ss.son["thread_id"], ss.son["cikti"], "son")
+        bekliyor = ss.son["durum"] == "BEKLEMEDE" and ss.son.get("cikti")
+        sonuc_goster(ss.son, onay=(lambda: onay_paneli(ss.son["thread_id"], ss.son["cikti"], "son")) if bekliyor else None)
     st.divider()
     bekleyen_onaylar_paneli(haric=ss.son["thread_id"] if ss.son and ss.son["durum"] == "BEKLEMEDE" else None)
 
@@ -600,13 +603,14 @@ def kayitli_sekmesi():
     ad = st.selectbox("Kayıt", [k["ad"] for k in kayitlar], key="kayit_sec")
     k = next(x for x in kayitlar if x["ad"] == ad)
     st.markdown(f"**Talep:** {k['metin']}")
-    sonuc_goster({**k["sonuc"], "talep": k["metin"], "toplam_sn": k["sonuc"].get("toplam_sn")}, kayit=k)
-    if k["sonuc"]["durum"] == "BEKLEMEDE":
+    def kayit_onay():
         with st.container(key="kayit_onay"):
             st.caption("Kayıt, onay verilemez: kayıtta yönetici kararı yoktur; canlı onay paneli Talep İşle sekmesindedir.")
-            c1, c2 = st.columns(2)
+            c1, c2, _bos = st.columns([1, 1, 8])
             c1.button("Onayla", key="kayit_onayla", disabled=True)
             c2.button("Reddet", key="kayit_reddet", disabled=True)
+    sonuc_goster({**k["sonuc"], "talep": k["metin"], "toplam_sn": k["sonuc"].get("toplam_sn")}, kayit=k,
+                 onay=kayit_onay if k["sonuc"]["durum"] == "BEKLEMEDE" else None)
 
 
 def sayfa():
