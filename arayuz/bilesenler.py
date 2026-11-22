@@ -72,7 +72,7 @@ def yan_cubuk():
         ss.bekleyen_yer = st.empty()
         with st.expander("Teknik bilgi"):
             st.caption(f"Model: {config.CHAT_MODEL} (think kapalı) · Embedding: {config.EMBED_MODEL} · Sürüm: {_surum()}")
-        st.caption("CPU'da çalışır · talep başı ~15–100 sn")
+        st.caption("CPU'da çalışır · talep başı ~10 sn–2 dk")
 
 
 def bekleyen_sayisi_yaz():
@@ -254,6 +254,8 @@ def _kaynaklar_goster(kaynaklar: list[dict]):
         baslik = f" — {k['baslik']}" if k["baslik"] else ""
         with st.expander(f"Madde {k['madde']}{baslik} · {k['dokuman']}"):
             S.html("<br>".join(md_sade(x) for x in k["satirlar"]))
+    if diger:
+        S.html('<div class="silik" style="margin:.6rem 0 .2rem 0">Diğer ilgili maddeler</div>')
     for grup, liste in diger.items():
         with st.expander(f"{grup} ({len(liste)} madde)"):
             S.html("".join(_kaynak_html(k) for k in liste))
@@ -273,6 +275,12 @@ def _karar_karti(o: dict):
 
 
 # ------------------------------------------------------------------ Onay
+def dugme_cifti(anahtar: str):
+    """Onayla/Reddet için solda, yan yana, etiketi kesilmeyen iki sütun (CSS: st-key-dugme_*)."""
+    with st.container(key=f"dugme_{anahtar}"):
+        return st.columns(2)
+
+
 def onay_paneli(tid: str, paket: dict, anahtar: str):
     """Sade onay kartı + Onayla/Reddet. Reddet için gerekçe zorunludur (kuralı ajan uygular; boşsa ajanın hatası gösterilir)."""
     ss = st.session_state
@@ -280,7 +288,7 @@ def onay_paneli(tid: str, paket: dict, anahtar: str):
         st.markdown("### Yönetici onayı gerekiyor")
         st.markdown(f"**Onay nedenleri:** {B.onay_nedenleri_yaz(paket['onay_nedenleri'])}")
         gerekce = st.text_input("Gerekçe (Reddet için zorunlu)", key=f"gerekce_{anahtar}")
-        c1, c2, _bos = st.columns([1, 1, 8])
+        c1, c2 = dugme_cifti(f"onay_{anahtar}")
         karar = "ONAYLA" if c1.button("Onayla", key=f"onayla_{anahtar}", type="primary") else \
             ("REDDET" if c2.button("Reddet", key=f"reddet_{anahtar}") else None)
         if karar:
@@ -422,16 +430,18 @@ ADIMLAR = [
 ]
 SINIRLAMALAR = [
     "Veri sentetiktir (kurgusal firma ve sözleşme); gerçek müşteri verisi yoktur.",
-    "Küçük model (qwen3.5:4b) CPU'da çalışır; talep başına yaklaşık 15–100 sn sürer.",
-    "Düzeltme sonrası sayılar tam bağımsız değildir.",
-    "Onaydan sonraki işlemler prototipte yalnızca kayıt olarak tutulur.",
-    "Dış sistem ve bildirimler sentetik simülatördür; gerçek Zendesk/Jira/e-posta/Slack bağlı değildir.",
-    "Test seti küçüktür (59 talep); sayılar kaba bir göstergedir.",
+    "Küçük yerel model (qwen3.5:4b) CPU'da çalışır: talep başına yaklaşık 10 sn ile 2 dk arası sürer (komut engelleme hızlı, hesaplama yapan talepler en yavaş).",
+    "Küçük model talep türü ve öncelik önerisinde hata yapabilir; bu yüzden kritik kararları insan verir. Zor sette öncelik kuralı maddesi hiç tam bulunamadı (0/7).",
+    "Yalnızca verilen SLA dokümanlarındaki kurallar kullanılır; dokümanda olmayan konuda \"bilmiyorum\" der.",
+    "Talepler tek model üzerinde sırayla işlenir; eşzamanlı yük test edilmedi.",
+    "Test seti küçüktür (59 talep, bağımsız alt küme 15): oranlar belirsizlik içerir, kaba bir göstergedir; düzeltme sonrası sayılar tam bağımsız değildir.",
+    "Onaydan sonraki işlemler (kredi, eskalasyon) prototipte yalnızca kayıt olarak tutulur; dış sistem ve bildirimler sentetik simülatördür (gerçek Zendesk/Jira/e-posta/Slack yok).",
 ]
 SINIRLAMA_AYRINTI = [
+    "MCP sunucusu hesap araçlarını standart arayüzle sunar, ajan bu araçları doğrudan çağırır (gerçek bir MCP istemcisiyle uçtan uca denenmedi).",
+    "n8n akışında yalnızca ENGELLE ve ONAY_BEKLIYOR dalları canlı denendi, diğer dallar testlerle doğrulandı.",
     "Düzeltmeler ilk koşu hatalarının kategorisine bakılarak yapıldı; temiz sayım ilk koşudur.",
     "Onaydan sonra gerçek sisteme yazılmaz; uygulanan işlemler kayıt olarak tutulur.",
-    "n8n akışı yalnızca iki dalla (ENGELLE ve onay gerekli) canlı denendi.",
     "Süre, makinenin o anki yüküne bağlıdır; küçük kümelerde tek talep yüzdeyi belirgin değiştirir.",
 ]
 
@@ -449,39 +459,55 @@ def akis_html(adimlar=ADIMLAR) -> str:
     return '<div class="akis">' + "".join(parca) + "</div>"
 
 
-DIS_KATMANLAR = [   # (ad, sınıf, etiket, açıklama, sentetik mi)
-    ("Destek sistemi", "dis", "SENTETİK", "Simülatör (dis_sistem/simulator.py): sabit Demo 1 ve Demo 2 talepleri.", True),
-    ("n8n", "dis", "OTOMASYON", "Talebi alır, ajan servisini çağırır, sonucu yoklar ve bildirime yönlendirir. KARAR VE ONAY VERMEZ.", False),
-    ("Ajan servisi (FastAPI)", "kod", "KOD", "POST /talep (asenkron), GET /durum, POST /onay; talepleri sırayla işler.", False),
-    ("Ajan (LangGraph)", "model", "MODEL + KOD", "Karar akışı: model adımları ve deterministik hesaplar; insan onayı.", False),
+# Dış katmanlar: her bileşen YALNIZ BİR KEZ. (kimlik, etiket, tür, tek satırlık rol)
+# tür: otomasyon (lacivert) · kod (gri) · model (mavi-yeşil: model + kod) · sentetik (açık sarı, kesikli) · insan (beyaz)
+DIS_BILESENLER = [
+    ("destek", "Destek sistemi", "sentetik", "Sentetik simülatör: sabit Demo 1 ve Demo 2 taleplerini verir."),
+    ("n8n", "n8n", "otomasyon", "Talebi alır, ajan servisini çağırır, sonucu yoklar ve bildirime yönlendirir; karar ve onay vermez."),
+    ("servis", "Ajan servisi (FastAPI)", "kod", "POST /talep (asenkron), GET /durum, POST /onay; talepleri sırayla işler."),
+    ("ajan", "Ajan (LangGraph)", "model", "Karar akışı: model adımları ve deterministik hesaplar; insan onayını bekler."),
+    ("ui", "Streamlit arayüzü", "kod", "İzleme ve insan onayı; ajanı doğrudan çağırır."),
+    ("araclar", "Hesap araçları (sla_araclari)", "kod", "Müşteri arama, son tarih, risk ve kredi hesapları."),
+    ("mcp", "MCP sunucusu", "kod", "Dört deterministik hesap aracını dış istemciye açar (LLM adımları açılmaz)."),
+    ("bildirim", "Bildirim (simülatör)", "sentetik", "Gerçek e-posta/Slack değil; bildirimler.jsonl dosyası, Bildirimler sekmesinde görünür."),
+    ("insan", "İnsan onayı (yönetici)", "insan", "Onayla/Reddet kararını yalnızca insan verir."),
 ]
-DIS_KATMANLAR_2 = [
-    [("Streamlit arayüzü", "dis", "ARAYÜZ", "İnsan onayı ve izleme; ajanı doğrudan çağırır.", False),
-     ("Ajan (LangGraph)", "model", "MODEL + KOD", "talep_isle / onay_ver", False)],
-    [("MCP sunucusu", "kod", "KOD", "Dört deterministik hesap aracını dış istemciye açar (LLM adımları açılmaz).", False),
-     ("Hesap araçları", "kod", "KOD", "sla_araclari: müşteri arama, son tarih, risk, kredi.", False)],
-    [("n8n", "dis", "OTOMASYON", "Bildirim yazar; /onay çağırmaz.", False),
-     ("Bildirim (simülatör)", "dis", "SENTETİK", "Gerçek e-posta/Slack değil; bildirimler.jsonl dosyası. Bildirimler sekmesinde görünür.", True)],
+DIS_BAGLANTILAR = [
+    ("destek", "n8n", ""), ("n8n", "servis", ""), ("servis", "ajan", ""), ("ui", "ajan", ""),
+    ("ajan", "araclar", ""), ("mcp", "araclar", ""), ("n8n", "bildirim", ""),
+    ("insan", "ui", "Onayla / Reddet"), ("insan", "servis", "POST /onay (n8n onay vermez)"),
 ]
+_DOT_STIL = {
+    "otomasyon": 'fillcolor="#0f1f3d", fontcolor="white", color="#0f1f3d"',
+    "kod": 'fillcolor="#eef1f6", fontcolor="#2a3750", color="#9aa8bd"',
+    "model": 'fillcolor="#d9f0f5", fontcolor="#0b4254", color="#0e7490", penwidth=2',
+    "sentetik": 'fillcolor="#fff3cd", fontcolor="#5b4300", color="#d99a00", style="filled,dashed", penwidth=2',
+    "insan": 'fillcolor="#ffffff", fontcolor="#14213d", color="#14213d"',
+}
 
 
-def _dis_dugum(d) -> str:
-    ad, sinif, etiket, aciklama, sentetik = d
-    return (f'<div class="dugum {sinif}{" sentetik" if sentetik else ""}"><b>{S.kac(ad)}</b>'
-            f'<span class="etiket {"sen" if sentetik else ("dis" if sinif == "dis" else sinif)}">{S.kac(etiket)}</span>'
-            f'<div style="font-size:.8rem;margin-top:.25rem">{S.kac(aciklama)}</div></div>')
+def dis_katman_dot() -> str:
+    """Tek temiz Graphviz DOT şeması (st.graphviz_chart): yukarıdan aşağı, her bileşen bir kez."""
+    satir = ['digraph G {', 'rankdir=TB; bgcolor="transparent"; nodesep=0.5; ranksep=0.55;',
+             'node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=14, margin="0.2,0.1"];',
+             'edge [color="#5b6b86", fontname="Helvetica", fontsize=12, arrowsize=0.8];']
+    for kimlik, etiket, tur, _rol in DIS_BILESENLER:
+        ek = ", style=\"rounded,filled\"" if tur != "sentetik" else ""
+        satir.append(f'{kimlik} [label="{etiket}", {_DOT_STIL[tur]}{ek}];')
+    for a, b_, e in DIS_BAGLANTILAR:
+        satir.append(f'{a} -> {b_}' + (f' [label="{e}", style=dashed]' if a == "insan" else "") + ";")
+    satir.append("}")
+    return "\n".join(satir)
 
 
-def dis_akis_html() -> str:
-    """Dış katmanlar şeması (HTML/CSS): ana zincir + yan bağlantılar. SENTETİK olanlar kesikli kenarlıklı ve etiketli."""
-    def satir(liste):
-        parca = []
-        for i, d in enumerate(liste):
-            parca.append(_dis_dugum(d))
-            if i < len(liste) - 1:
-                parca.append('<div class="ok">→</div>')
-        return '<div class="akis">' + "".join(parca) + "</div>"
-    return satir(DIS_KATMANLAR) + "".join(satir(r) for r in DIS_KATMANLAR_2)
+def dis_katman_sema():
+    """Dış katmanlar şeması: Graphviz; çalışmazsa sabit sütunlu HTML ızgarası."""
+    try:
+        st.graphviz_chart(dis_katman_dot(), width="stretch")
+    except Exception:  # noqa: BLE001
+        S.html('<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">' + "".join(
+            f'<div class="dugum {"sentetik" if t == "sentetik" else "kod"}"><b>{S.kac(e)}</b></div>'
+            for _k, e, t, _r in DIS_BILESENLER) + "</div>")
 
 
 def mimari_sekmesi():
@@ -493,17 +519,18 @@ def mimari_sekmesi():
                                            ("ENGELLE", "BILMIYORUM", "SORU_SOR", "ONCELIK_BELIRLENEMEDI", "HESAPLA")),
                 unsafe_allow_html=True)
     st.subheader("Dış katmanlar")
-    S.html('<div class="lejant"><span><span class="etiket dis">DIŞ KATMAN</span> otomasyon / arayüz</span>'
-           '<span><span class="etiket sen">SENTETİK</span> kesikli kenar: gerçek sisteme bağlı değil</span></div>')
-    S.html(dis_akis_html())
+    st.caption("Renkler: lacivert = otomasyon · mavi-yeşil = model + kod · gri = kod · sarı kesikli = sentetik (gerçek sisteme bağlı değil).")
+    dis_katman_sema()
     st.info("Onayı yalnızca insan verir; n8n onay vermez.")
-    with st.expander("Ayrıntı"):
+    with st.expander("Ayrıntı: bileşenlerin rolleri"):
+        for _k, e, _t, rol in DIS_BILESENLER:
+            st.markdown(f"- **{e}:** {rol}")
         st.caption("n8n yalnızca ajan servisini çağırır ve sonucu bildirime yönlendirir. "
                    "Onay yalnızca insandır (Streamlit arayüzü ya da elle POST /onay).")
     st.subheader("Karar sırası özeti")
     st.markdown("1. Komut içeren talep **işlenmez** (ENGELLE).\n"
                 "2. Müşteri bulunamazsa ya da belirsizse **sorulur**.\n"
-                "3. Öncelik kaynaklı önerilir; belirsizse yöneticiye iletilir.\n"
+                "3. Öncelik kaynaklı önerilir; belirsizse önce müşteriye sorulur, yine belirsizse yöneticiye iletilir.\n"
                 "4. Süre ve kredi hesapları **kodla** yapılır.\n"
                 "5. Onay gerekiyorsa **insan karar verir**.")
     with st.expander("Ayrıntı"):
@@ -550,14 +577,16 @@ def _bildirim_onay(b: dict, anahtar: str, servis_acik: bool):
         _karar_karti(karar.get("onay_sonucu") or {})
         st.caption("Bu talep karara bağlandı; düğmeler pasif.")
         return
-    bekliyor = servis_acik and (durum or {}).get("durum") == "ONAY_BEKLIYOR"
     if not servis_acik:
-        st.caption("Onay düğmeleri için ajan servisi gerekir.")
-    elif not bekliyor:
+        st.caption("Onay için ajan servisi gerekir.")          # gerekçe kutusu ve düğmeler gösterilmez
+        return
+    bekliyor = (durum or {}).get("durum") == "ONAY_BEKLIYOR"
+    if not bekliyor:
         st.info(f"Talep şu an onay beklemiyor (durum: {(durum or {}).get('durum')}); düğmeler pasif.")
-    st.caption("Karar yalnızca yöneticidedir; n8n onay vermez.")
+    if "n8n onay vermez" not in f"{b.get('baslik', '')} {b.get('mesaj', '')}":     # kart metninde varsa tekrarlama
+        st.caption("Karar yalnızca yöneticidedir; n8n onay vermez.")
     gerekce = st.text_input("Gerekçe (Reddet için zorunlu)", key=f"bgerekce_{anahtar}", disabled=not bekliyor)
-    c1, c2 = st.columns(2)
+    c1, c2 = dugme_cifti(f"bildirim_{anahtar}")
     verilen = "onayla" if c1.button("Onayla", key=f"bonay_{anahtar}", type="primary", disabled=not bekliyor) else \
         ("reddet" if c2.button("Reddet", key=f"bred_{anahtar}", disabled=not bekliyor) else None)
     if verilen:
@@ -606,7 +635,7 @@ def kayitli_sekmesi():
     def kayit_onay():
         with st.container(key="kayit_onay"):
             st.caption("Kayıt, onay verilemez: kayıtta yönetici kararı yoktur; canlı onay paneli Talep İşle sekmesindedir.")
-            c1, c2, _bos = st.columns([1, 1, 8])
+            c1, c2 = dugme_cifti("kayit")
             c1.button("Onayla", key="kayit_onayla", disabled=True)
             c2.button("Reddet", key="kayit_reddet", disabled=True)
     sonuc_goster({**k["sonuc"], "talep": k["metin"], "toplam_sn": k["sonuc"].get("toplam_sn")}, kayit=k,

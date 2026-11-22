@@ -99,6 +99,10 @@ section[data-testid="stSidebar"] * {{ white-space: normal; overflow-wrap: anywhe
 .kpi .kart .al {{ font-size: .72rem; overflow-wrap: anywhere; }}
 .silik {{ font-size: .78rem; color: #8592a8; margin-top: .25rem; }}
 .sade-not {{ font-size: .85rem; color: #5b6b86; background: #f0f3f8; border-radius: 8px; padding: .4rem .7rem; margin: .3rem 0; }}
+[class*="st-key-dugme_"] [data-testid="stHorizontalBlock"] {{ justify-content: flex-start; gap: .5rem; flex-wrap: nowrap; width: auto; }}
+[class*="st-key-dugme_"] [data-testid="stColumn"] {{ flex: 0 0 auto !important; width: auto !important; min-width: 0 !important; }}
+[class*="st-key-dugme_"] button {{ white-space: nowrap; min-width: 6.5rem; padding-left: 1.2rem; padding-right: 1.2rem; }}
+[class*="st-key-dugme_"] button p {{ white-space: nowrap; overflow: visible; }}
 </style>
 """
 

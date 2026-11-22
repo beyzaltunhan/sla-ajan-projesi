@@ -146,9 +146,10 @@ def test_servis_kapali_mesaj_ve_pasif_dugmeler(ortam):
     ortam.yaz(ONAY)
     ortam.kur(SahteServis(kapali=True))
     at = calistir()                               # çökmez
-    assert any("Onay düğmeleri için ajan servisi gerekir." in c.value for c in at.caption)
+    assert any("Onay için ajan servisi gerekir." in c.value for c in at.caption)
     assert not list(at.warning)                   # sarı uyarı yok: sakin gri not
-    assert all(b.disabled for b in at.button if b.label in ("Onayla", "Reddet"))
+    assert not [b for b in at.button if b.label in ("Onayla", "Reddet")]          # pasif düğme de yok
+    assert not [t for t in at.text_input if "Gerekçe" in t.label]                  # gerekçe kutusu da yok
 
 
 def test_servis_kapaliyken_tiklama_cokmez(ortam, monkeypatch):
@@ -159,7 +160,7 @@ def test_servis_kapaliyken_tiklama_cokmez(ortam, monkeypatch):
     [b for b in at.button if b.label == "Onayla"][0].click()
     at.run()
     assert not at.exception and any("ajan servisi gerekir" in c.value for c in at.caption)
-    assert all(b.disabled for b in at.button if b.label in ("Onayla", "Reddet"))
+    assert not [b for b in at.button if b.label in ("Onayla", "Reddet")]
 
 
 def test_zaten_karara_baglanmis_pasif_ve_durum(ortam):
@@ -252,18 +253,33 @@ def test_hata_adlari_okunur():
     assert olcum.hata_adi("bilinmeyen") == "bilinmeyen"
 
 
-def test_dis_katman_semasi():
-    from arayuz import stil
-    h = bilesenler.dis_akis_html()
-    for ad in ("Destek sistemi", "n8n", "Ajan servisi (FastAPI)", "Ajan (LangGraph)", "Streamlit arayüzü", "MCP sunucusu", "Hesap araçları"):
-        assert stil.kac(ad) in h, ad
-    assert h.count("SENTETİK") == 2 and h.count("dugum dis sentetik") == 2 and "KARAR VE ONAY VERMEZ" in h
-    assert "sentetik" in stil.CSS and "border-style: dashed" in stil.CSS
+def test_dis_katman_semasi_her_bilesen_bir_kez():
+    dot = bilesenler.dis_katman_dot()
+    for _k, etiket, _t, _r in bilesenler.DIS_BILESENLER:
+        assert dot.count(f'label="{etiket}"') == 1, etiket                       # her bileşen yalnız bir kez
+    for ad in ("Destek sistemi", "n8n", "Ajan servisi (FastAPI)", "Ajan (LangGraph)", "Streamlit arayüzü", "MCP sunucusu",
+               "Hesap araçları", "Bildirim (simülatör)", "İnsan onayı"):
+        assert ad in dot, ad
+    assert dot.count("LangGraph") == 1 and dot.count('label="n8n"') == 1
+    assert dot.count("dashed") >= 2 and "n8n onay vermez" in dot                  # sentetikler kesikli, onay notu
+    assert dot.count("->") == len(bilesenler.DIS_BAGLANTILAR) == 9
+    ids = [k for k, *_ in bilesenler.DIS_BILESENLER]
+    assert len(ids) == len(set(ids))
+
+
+def test_dis_katman_sekmede_graphviz_ve_ayrinti(ortam):
+    def uyg():
+        from arayuz import bilesenler as b
+        b.mimari_sekmesi()
+    at = AppTest.from_function(uyg, default_timeout=30)
+    at.run()
+    assert not at.exception and len(at.get("graphviz_chart")) == 1
+    assert any(e.label.startswith("Ayrıntı") for e in at.expander)
 
 
 def test_sinirlamalar_guncel():
     m = " ".join(bilesenler.SINIRLAMALAR + bilesenler.SINIRLAMA_AYRINTI)
-    assert "sentetik simülatör" in m and "Zendesk/Jira/e-posta/Slack" in m and "iki dalla" in m
+    assert "sentetik simülatör" in m and "Zendesk/Jira/e-posta/Slack" in m and "ONAY_BEKLIYOR dalları canlı denendi" in m
     assert "gelecek çalışma" not in m and "Onaydan sonraki işlemler" in m
 
 
@@ -284,3 +300,28 @@ def test_tam_sayfa_acilir_bes_sekme_ve_talep_ise_bozulmadi(monkeypatch, tmp_path
     o.select(o.options[2]).run()
     assert "iki gündür" in at.text_area(key="talep_metni").value
     assert any(b.label == "İşle" for b in at.button)
+
+
+def test_dugme_etiketleri_tam_ve_yakin_css():
+    from arayuz import stil
+    assert 'st-key-dugme_' in stil.CSS and "white-space: nowrap" in stil.CSS and "min-width: 6.5rem" in stil.CSS
+    assert "flex: 0 0 auto" in stil.CSS                                           # sütunlar içerik kadar: düğmeler yan yana, yakın
+
+
+def test_etiketler_tam_onay_ve_bildirim(ortam):
+    ortam.yaz(ONAY)
+    ortam.kur(SahteServis())
+    at = calistir()
+    assert [b.label for b in at.button if b.label in ("Onayla", "Reddet")] == ["Onayla", "Reddet"]
+
+
+def test_yan_cubuk_ve_sinirlama_sure_ifadesi():
+    import inspect
+    assert "~10 sn–2 dk" in inspect.getsource(bilesenler.yan_cubuk) and "15–100" not in inspect.getsource(bilesenler)
+    assert any("10 sn ile 2 dk" in x for x in bilesenler.SINIRLAMALAR) and len(bilesenler.SINIRLAMALAR) == 7
+
+
+def test_karar_sirasi_3_ajan_davranisiyla_uyumlu():
+    import inspect
+    k = inspect.getsource(bilesenler.mimari_sekmesi)
+    assert "belirsizse önce müşteriye sorulur, yine belirsizse yöneticiye iletilir" in k

@@ -97,3 +97,13 @@ def test_onay_karti_sade():
     k = inspect.getsource(bilesenler.onay_paneli)
     assert "Yönetici onayı gerekiyor" in k and "Onay nedenleri" in k and "Gerekçe (Reddet için zorunlu)" in k
     assert 'S.kart(' not in k and "paket[\"mesaj\"]" not in k                              # kart ve tekrar eden özet yok
+
+
+def test_diger_ilgili_maddeler_basligi_ana_maddelerden_sonra():
+    at = _calistir("Demo 2")
+    m = _md(at)
+    assert "Diğer ilgili maddeler" in m
+    etk = [e.label for e in at.expander]
+    son_ana = max(i for i, x in enumerate(etk) if x.startswith("Madde "))
+    ilk_kat = min(i for i, x in enumerate(etk) if x.startswith(("Süre ve mesai", "Risk ve ihlal", "Hizmet kredisi", "Onay ve eskalasyon")))
+    assert son_ana < ilk_kat
