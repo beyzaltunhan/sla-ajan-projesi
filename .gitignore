@@ -8,3 +8,4 @@ __pycache__/
 *.sqlite-shm
 checkpoints.db*
 demo/yedek/
+servis_checkpoints.sqlite*

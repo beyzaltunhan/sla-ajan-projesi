@@ -67,3 +67,48 @@ Claude Desktop yapılandırma örneği (`claude_desktop_config.json`; yolları k
 
 Not: Bu yapılandırma gerçek bir MCP istemcisiyle (Claude Desktop) denenmedi; sunucu yalnızca testlerde bir MCP istemci
 oturumuyla ve ayrı süreç olarak stdio üzerinden doğrulandı.
+
+## Ajan servisi
+
+`servis.py`, ajanı HTTP üzerinden çağrılabilir yapar (n8n gibi dış otomasyonlar için); ajan kodu değişmez.
+Model CPU'da bir talebi 15–95 sn'de işlediği için `POST /talep` **asenkrondur**: hemen 202 ve bir `talep_id` döner, sonuç
+`GET /durum/{talep_id}` ile okunur. Model tek olduğundan talepler **sırayla** (aynı anda tek talep) işlenir.
+
+```
+python servis.py                          # 127.0.0.1:8000
+python servis.py --host 0.0.0.0 --port 8000   # Docker'daki n8n'in erişebilmesi için
+uvicorn servis:app                        # alternatif
+```
+
+| Uç nokta | Ne yapar |
+|---|---|
+| `POST /talep` | `{talep_metni, kayit_zamani?, simdi?, soru_soruldu?}` → 202 `{talep_id, durum:"ISLENIYOR"}` |
+| `GET /durum/{talep_id}` | `ISLENIYOR` / `ONAY_BEKLIYOR` / `TAMAMLANDI` / `ISLENEMEDI`; bitince `KararCiktisi`, süre, adım süreleri |
+| `POST /onay/{talep_id}` | `{karar:"onayla"\|"reddet", gerekce}`; reddette gerekçe zorunlu (422); yalnızca `ONAY_BEKLIYOR`'da (aksi 409) |
+| `GET /bekleyen` | Onay bekleyen talepler |
+| `GET /saglik` | Servis ve Ollama durumu |
+
+Zamanlar ISO 8601 ve saat dilimsizdir (örn. `2026-11-19T10:00:00`); verilmezse kayıt zamanı = şimdi = sistem saati.
+Etkileşimli dokümantasyon: `http://127.0.0.1:8000/docs`.
+
+Örnek komutlar (PowerShell):
+
+```powershell
+$g = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/talep -ContentType "application/json" `
+  -Body '{"talep_metni":"Marmara Perakende: Sipariş onay ekranı iki gündür çalışmıyor, başka yoldan işlem yapamıyoruz.","kayit_zamani":"2026-11-19T10:00:00","simdi":"2026-11-22T12:00:00"}'
+Invoke-RestMethod http://127.0.0.1:8000/durum/$($g.talep_id)        # ISLENIYOR -> ONAY_BEKLIYOR
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/onay/$($g.talep_id) -ContentType "application/json" `
+  -Body '{"karar":"reddet","gerekce":"Kredi oranı sözleşmeyle çelişiyor."}'
+```
+
+```
+curl.exe -X POST http://127.0.0.1:8000/talep -H "Content-Type: application/json" -d "{\"talep_metni\":\"...\"}"
+```
+
+**Güvenlik notu:** Kimlik doğrulama yoktur; prototiptir. `--host 0.0.0.0` yalnızca güvenilir yerel ağda kullanılmalı,
+internete açılmamalıdır.
+
+**Streamlit ile birlikte çalıştırma:** Servis kendi checkpoint dosyasını (`servis_checkpoints.sqlite`, git dışı) kullanır;
+Streamlit arayüzü `checkpoints.sqlite` kullanır. Dosyalar ayrı olduğu için ikisi birlikte çalışabilir, ancak model (Ollama)
+tek ve CPU'da olduğundan aynı anda iki taraftan talep göndermek her ikisini de yavaşlatır; demoda birini kullanın. Servis
+yeniden başlarsa bekleyen onaylar `servis_checkpoints.sqlite`'dan okunur (talep_id aynı kalır).
