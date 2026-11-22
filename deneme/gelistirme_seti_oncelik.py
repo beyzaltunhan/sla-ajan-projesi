@@ -41,6 +41,8 @@ FEWSHOT_ONCELIK = [
     ("Kullanıcı profilinde şifre nasıl değiştirilir? Sistem normal çalışıyor.", "P4"),
     ("ÇOK ACİL, HEMEN! Ana sayfadaki logo biraz kaymış, işimiz aksamıyor.", "P3"),
     ("Çalışmıyor, bakın lütfen.", "belirsiz"),
+    ("Sevk planı ekranındaki kaydet düğmesi hata veriyor, planı e-postayla ileterek işi yürütüyoruz, diğer ekranlar çalışıyor.", "P3"),
+    ("Müşteri kayıt modülü çalışmıyor, yeni müşteri ekleyemiyoruz ve başka bir yolumuz yok; sistemin diğer bölümleri sağlam.", "P2"),
 ]
 
 

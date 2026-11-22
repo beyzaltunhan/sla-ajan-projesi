@@ -25,7 +25,7 @@ from rag.parcala import dokumanlari_parcala
 
 DOKUMAN = "02_oncelik_rehberi"
 K = 8
-CEKIRDEK_MADDELER = ["3.1", "4.1", "5.1", "6.1", "7.1", "7.2", "7.3", "7.4", "8.1", "8.2", "8.3", "8.4"]
+CEKIRDEK_MADDELER = ["2.1", "2.2", "3.1", "4.1", "5.1", "6.1", "7.1", "7.2", "7.3", "7.4", "8.1", "8.2", "8.3", "8.4"]
 
 SISTEM = (
     "Sen bir destek talebi önceliklendirme yardımcısısın. Sana bir müşteri talep metni ve Doküman 02'den "
@@ -35,6 +35,14 @@ SISTEM = (
     "Seçenekler: P1, P2, P3, P4 veya belirsiz. 'Acil', 'hemen', 'çok önemli' gibi ifadeler tek başına önceliği "
     "yükseltmez. Eksik bilgi tahmin edilerek tamamlanmaz; talep öncelik belirlemeye yetmiyorsa (ör. hizmetin "
     "tamamının mı bir bölümünün mü etkilendiği ve geçici çözüm olup olmadığı anlaşılmıyorsa) 'belirsiz' yaz.\n"
+    "Karar basamakları: (a) P1 YALNIZCA metinde AÇIKÇA yazılıysa verilir: hizmetin tamamı kullanılamıyor, üretim ortamı durmuş "
+    "ya da veri kaybı/güvenlik riski var VE geçici çözüm yok. Tek bir ekran veya işlev çalışmıyorsa P1 değildir; metinde "
+    "yazmayan bir durumu (ör. 'üretim durdu', 'tamamen kullanılamıyor') varsayma. (b) Metinde bir geçici çözüm varsa (elle "
+    "yapabiliyoruz, eski yöntem, alternatif yol vb.) seviye bir alt düşer (Madde 7.2): sınırlı/kısmi sorun + geçici çözüm "
+    "= P3. Sorun/hata bildirimi hiçbir zaman P4 olmaz (en düşük seviye P3); P4 yalnızca bilgi isteği ya da "
+    "kullanım sorusudur (Madde 6.1). P2 yalnızca günlük işi engelleyen bir işlev çalışmıyor ya da ciddi yavaşsa VE geçici çözüm yok ya da çok zorsa "
+    "verilir; işlevin adının 'önemli' görünmesi tek başına P2 gerektirmez. (c) etki cümlesine yalnızca talepte yazan "
+    "bilgiyi yaz.\n"
     "kullanilan_maddeler: kararını dayandırdığın madde numaraları (ör. \"3.1\"). YALNIZCA sana verilen parçalardaki "
     "numaraları yaz; olmayan madde numarası uydurma. etki: tek cümlelik kısa etki değerlendirmesi.\n"
     "Aşağıdaki örneklerdeki madde numaraları yalnızca biçimi göstermek içindir; sen yalnızca sana verilen parçalardaki "
@@ -43,7 +51,7 @@ SISTEM = (
 )
 
 # Few-shot cevap gövdeleri (metinler deneme/gelistirme_seti_oncelik.FEWSHOT_ONCELIK'ten; geliştirme setinden ayrı)
-_FS_MADDE = {"P1": ["3.1"], "P2": ["4.1"], "P3": ["5.1"], "P4": ["6.1"], "belirsiz": ["8.1"]}
+_FS_MADDELER = [["3.1"], ["4.1"], ["5.1", "7.2"], ["6.1"], ["5.1"], ["8.1"], ["5.1", "7.2"], ["4.1"]]
 _FS_ETKI = [
     "Hizmet tamamen kullanılamıyor ve geçici çözüm yok.",
     "Önemli işlev çalışmıyor, geçici çözüm yok, hizmet kısmen kullanılabiliyor.",
@@ -51,6 +59,8 @@ _FS_ETKI = [
     "Bilgi isteği; hizmette aksama yok.",
     "İfadedeki aciliyet önceliği yükseltmez; işlev sınırlı ve iş aksamıyor.",
     "Talep öncelik belirlemeye yetecek bilgi içermiyor.",
+    "Tek bir ekranda hata var ama geçici çözüm mevcut; bir alt seviyeye düşer.",
+    "Tek bir işlev çalışmıyor ve geçici çözüm yok; hizmetin tamamının kullanılamadığı yazılmamış, bu yüzden P1 değil.",
 ]
 
 
@@ -100,10 +110,10 @@ def _baglam_metni(parcalar: list[dict]) -> str:
 
 def _mesajlar(talep: str, parcalar: list[dict]) -> list[dict]:
     m = [{"role": "system", "content": SISTEM}]
-    for (metin, etiket), etki in zip(FEWSHOT_ONCELIK, _FS_ETKI):
+    for (metin, etiket), maddeler, etki in zip(FEWSHOT_ONCELIK, _FS_MADDELER, _FS_ETKI):
         m.append({"role": "user", "content": f"Talep metni: {metin}"})
         m.append({"role": "assistant", "content": json.dumps(
-            {"oncelik": etiket, "kullanilan_maddeler": _FS_MADDE[etiket], "etki": etki}, ensure_ascii=False)})
+            {"oncelik": etiket, "kullanilan_maddeler": maddeler, "etki": etki}, ensure_ascii=False)})
     m.append({"role": "user", "content": f"Doküman 02 parçaları:\n\n{_baglam_metni(parcalar)}\n\nTalep metni: {talep}"})
     return m
 
