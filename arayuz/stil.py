@@ -42,6 +42,8 @@ section[data-testid="stSidebar"] * {{ white-space: normal; overflow-wrap: anywhe
 .pill-hata {{ background: #fee4e2; color: #912018; border-color: #f4a7a0; }}
 .kartlar {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: .6rem 0 1rem 0; }}
 .kart {{ background: #fff; border: 1px solid #dbe2ec; border-radius: 12px; padding: .8rem 1rem; }}
+.kartlar.iki {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+@media (max-width: 640px) {{ .kartlar.iki {{ grid-template-columns: minmax(0, 1fr); }} }}
 .kart.genis {{ grid-column: span 2; }}
 .kart .et {{ font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: #5b6b86; margin-bottom: .25rem; }}
 .kart .de {{ font-size: 1.4rem; font-weight: 700; color: {LACIVERT}; line-height: 1.25; overflow-wrap: anywhere; }}
@@ -150,8 +152,8 @@ def kart(etiket: str, deger_html: str, alt: str = "", genis: bool = False) -> st
             f'<div class="de">{deger_html}</div>' + (f'<div class="al">{kac(alt)}</div>' if alt else "") + "</div>")
 
 
-def kartlar(kartlar_html: list[str]) -> str:
-    return '<div class="kartlar">' + "".join(kartlar_html) + "</div>"
+def kartlar(kartlar_html: list[str], iki_sutun: bool = False) -> str:
+    return f'<div class="kartlar{" iki" if iki_sutun else ""}">' + "".join(kartlar_html) + "</div>"
 
 
 def kpi_seridi(kartlar_html: list[str]) -> str:

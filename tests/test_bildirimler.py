@@ -278,9 +278,16 @@ def test_dis_katman_sekmede_graphviz_ve_ayrinti(ortam):
 
 
 def test_sinirlamalar_guncel():
-    m = " ".join(bilesenler.SINIRLAMALAR + bilesenler.SINIRLAMA_AYRINTI)
-    assert "sentetik simülatör" in m and "Zendesk/Jira/e-posta/Slack" in m and "ONAY_BEKLIYOR dalları canlı denendi" in m
-    assert "gelecek çalışma" not in m and "Onaydan sonraki işlemler" in m
+    assert len(bilesenler.SINIRLAMALAR) == 6
+    m = " ".join(bilesenler.SINIRLAMALAR)
+    assert "simülasyondur" in m and "tek model üzerinde sırayla" in m and "yön göstericidir" in m and "bilmiyorum" in m
+    assert "gelecek çalışma" not in m
+    assert "diğer dallar yapısal testlerle doğrulandı, canlı çalıştırılmadı" in " ".join(bilesenler.SINIRLAMA_AYRINTI)
+    assert "ONAY_BEKLIYOR" in " ".join(bilesenler.SINIRLAMA_AYRINTI)
+    # 0/7 ve 6/7 değerleri rapor dosyasından doğrulanır (zor set, 02 maddeleri)
+    z = [x for x in olcum.kaynak_bulma(olcum.rapor_oku(olcum.SONRA_RAPOR)) if x["kume"].startswith("Zor") and x["grup"].startswith("02")][0]
+    assert olcum.kn(*z["sonra"]["tumu"]) == "0/7" and olcum.kn(*z["sonra"]["en_az_biri"]) == "6/7"
+    assert "0/7" in m and "6/7" in m
 
 
 def test_css_ust_serit_cilasi():
@@ -318,7 +325,7 @@ def test_etiketler_tam_onay_ve_bildirim(ortam):
 def test_yan_cubuk_ve_sinirlama_sure_ifadesi():
     import inspect
     assert "~10 sn–2 dk" in inspect.getsource(bilesenler.yan_cubuk) and "15–100" not in inspect.getsource(bilesenler)
-    assert any("10 sn ile 2 dk" in x for x in bilesenler.SINIRLAMALAR) and len(bilesenler.SINIRLAMALAR) == 7
+    assert any("10 sn–2 dk" in x for x in bilesenler.SINIRLAMALAR)
 
 
 def test_karar_sirasi_3_ajan_davranisiyla_uyumlu():

@@ -14,6 +14,7 @@ import ajan
 import config
 from arayuz import bicimle as B
 from arayuz import bildirimler as BL
+from arayuz import grafikler as G
 from arayuz import kayitli, model, olcum
 from arayuz import stil as S
 
@@ -345,50 +346,60 @@ def talep_sekmesi():
 
 # ------------------------------------------------------------------ Ölçüm Sonuçları
 def olcum_sekmesi():
-    st.info("Temiz sayım ilk koşudur; düzeltme sonrası sayılar tam bağımsız değildir.")
     try:
         r = olcum.karsilastir()
     except Exception as e:  # noqa: BLE001
         st.error(f"Ölçüm dosyaları okunamadı: {type(e).__name__}: {e}")
         return
     ilk, sonra = r["ilk"], r["sonra"]
+    t_ilk = sum(ilk["tam"][k][0] for k in ("Ana set", "Zor set"))
+    t_sonra = sum(sonra["tam"][k][0] for k in ("Ana set", "Zor set"))
+    n = ilk["n"]
+    st.subheader(f"Toplam {n} talepte tam doğru: {olcum.kn(t_ilk, n)} → {olcum.kn(t_sonra, n)}")
+    st.caption("Temiz sayım ilk koşudur; düzeltme sonrası sayılar tam bağımsız değildir.")
     with st.expander("Ölçüm bilgisi"):
-        st.caption(olcum.NOT)
         st.caption(f"İlk koşu: commit {ilk['meta']['commit'][:8]}, {ilk['meta']['tarih']} · Düzeltme sonrası: commit "
                    f"{sonra['meta']['commit'][:8]}, {sonra['meta']['tarih']} · model {sonra['meta']['chat_model']}")
-        st.caption(f"Kesinti şüpheli talepler hariç ortalama: {ilk['gecikme_ort_supheli_haric']} → {sonra['gecikme_ort_supheli_haric']} sn "
+        st.caption('"Tam doğru": davranış, neden, müşteri, paket ve (HESAPLA\'da) öncelik, son tarih, risk, kredi, onay gerekli ve nedenleri '
+                   'hepsi doğru; "davranış doğru": yalnızca ajanın seçtiği davranış (HESAPLA, BILMIYORUM, ...) beklenenle aynı.')
+        b_, c_ = len(r["duzeldi"]), len(r["bozuldu"])
+        st.caption(f"Exact McNemar (ilk koşu → düzeltme sonrası, {b_} düzeldi / {c_} bozuldu): p = {G.virgul(G.mcnemar_tam(b_, c_), 3)} "
+                   "(iki yönlü, binom). Küçük örnek; yön göstericidir.")
+        st.caption("Düzeltmeler test hatalarına bakılarak yapıldı; bağımsız kanıt değildir.")
+        st.caption(f"Kesinti şüpheli talepler hariç ortalama süre: {G.virgul(ilk['gecikme_ort_supheli_haric'])} → "
+                   f"{G.virgul(sonra['gecikme_ort_supheli_haric'])} sn "
                    f"(işaretlenenler: ilk {', '.join(ilk['supheli']) or '—'}; sonra {', '.join(sonra['supheli']) or '—'}). "
                    "Süre, CPU'da çalışan küçük modelin ve o anki makine yükünün ürünüdür.")
-    st.subheader("Tam doğru: ilk koşu → düzeltme sonrası (kaç/N)")
-    kartlar = [S.kart(ad, S.kac(f"{olcum.kn(*ilk['tam'][ad])} → {olcum.kn(*sonra['tam'][ad])}"),
-                      alt=f"Davranış doğru: {olcum.kn(*ilk['dav'][ad])} → {olcum.kn(*sonra['dav'][ad])}")
-               for ad in ("Ana set", "Zor set", "Bağımsız 15")]
-    S.html(S.kartlar(kartlar))
+        st.caption(olcum.NOT)
+    st.markdown("**Tam doğru: ilk koşu → düzeltme sonrası**")
+    st.altair_chart(G.tam_dogru_grafigi(r), use_container_width=True)
+    st.caption("Gri: ilk koşu · mavi: düzeltme sonrası · çizgi: %95 Wilson güven aralığı · içi boş işaret: bağımsız 15 (Ana+Zor'un alt kümesi).")
+    S.html(S.kartlar([
+        S.kart("Davranış doğru (Ana set)", S.kac(f"{olcum.kn(*ilk['dav']['Ana set'])} → {olcum.kn(*sonra['dav']['Ana set'])}")),
+        S.kart("Davranış doğru (Zor set)", S.kac(f"{olcum.kn(*ilk['dav']['Zor set'])} → {olcum.kn(*sonra['dav']['Zor set'])}")),
+        S.kart("Davranış doğru (Bağımsız 15)", S.kac(f"{olcum.kn(*ilk['dav']['Bağımsız 15'])} → {olcum.kn(*sonra['dav']['Bağımsız 15'])}"))]))
     S.html(S.kartlar([
         S.kart("Onay yakalama", S.kac(f"{olcum.kn(*ilk['onay_yakalama'])} → {olcum.kn(*sonra['onay_yakalama'])}"),
                alt="onay gerekenlerde onay istendi"),
         S.kart("Yanlış alarm", S.kac(f"{olcum.kn(*ilk['yanlis_alarm'])} → {olcum.kn(*sonra['yanlis_alarm'])}"),
                alt="onay gerekmezken onay istendi"),
-        S.kart("Ortalama gecikme", S.kac(f"{ilk['gecikme_ort']} → {sonra['gecikme_ort']} sn"), alt="talep başına")]))
-    import pandas as pd
-    kume = ("Ana set", "Zor set", "Bağımsız 15")
-    st.markdown("**Tam doğru talep sayısı** (küme büyüklükleri: " + ", ".join(f"{k}: {ilk['tam'][k][1]}" for k in kume) + ")")
-    st.bar_chart(pd.DataFrame({"İlk koşu": [ilk["tam"][k][0] for k in kume], "Düzeltme sonrası": [sonra["tam"][k][0] for k in kume]},
-                              index=list(kume)), color=["#9aa8bd", S.VURGU], stack=False)
+        S.kart("Ortalama gecikme", S.kac(f"{G.virgul(ilk['gecikme_ort'])} → {G.virgul(sonra['gecikme_ort'])} sn"), alt="talep başına")]))
     _kaynak_bulma_kartlari()
     st.subheader("Hata türleri (hatalı talep sayısı, adım bazında)")
-    adimlar = sorted({a for k in ("Ana set", "Zor set") for a in set(ilk["hata_turleri"][k]) | set(sonra["hata_turleri"][k])})
-    if adimlar:
-        etiket = [olcum.hata_adi(a) for a in adimlar]
-        st.bar_chart(pd.DataFrame(
-            {"İlk koşu": [sum(ilk["hata_turleri"][k].get(a, 0) for k in ("Ana set", "Zor set")) for a in adimlar],
-             "Düzeltme sonrası": [sum(sonra["hata_turleri"][k].get(a, 0) for k in ("Ana set", "Zor set")) for a in adimlar]},
-            index=etiket), color=["#9aa8bd", S.VURGU], stack=False, horizontal=True, height=60 + 90 * len(adimlar))
+    satirlar = G.hata_turu_satirlari(r, olcum.hata_adi)
+    if satirlar:
+        st.altair_chart(G.hata_turu_grafigi(satirlar), use_container_width=True)
     st.subheader("Talep bazında değişim")
-    st.markdown(f"- **Düzeldi ({len(r['duzeldi'])}):** {', '.join(r['duzeldi']) or '—'}\n"
-                f"- **Bozuldu — yeni regresyon ({len(r['bozuldu'])}):** {', '.join(r['bozuldu']) or '—'}\n"
-                f"- **Hâlâ hatalı ({len(r['hala_hatali'])}):** {', '.join(r['hala_hatali']) or '—'}\n"
-                f"- **İki koşuda da doğru:** {r['degismedi_dogru']}")
+    g = G.degisim_gruplari(r)
+    st.altair_chart(G.birim_grafik(r), use_container_width=True)
+    st.caption("Her kare bir talep; üzerine gelince T numarası görünür. "
+               f"Mavi: düzeldi ({len(g['Düzeldi'])}) · turuncu: bozuldu, yeni regresyon ({len(g['Bozuldu'])}) · "
+               f"koyu gri: hâlâ hatalı ({len(g['Hâlâ hatalı'])}) · açık gri: iki koşuda da doğru ({len(g['İki koşuda da doğru'])}).")
+    with st.expander("Talep numaraları"):
+        st.markdown(f"- **Düzeldi ({len(r['duzeldi'])}):** {', '.join(r['duzeldi']) or '—'}\n"
+                    f"- **Bozuldu — yeni regresyon ({len(r['bozuldu'])}):** {', '.join(r['bozuldu']) or '—'}\n"
+                    f"- **Hâlâ hatalı ({len(r['hala_hatali'])}):** {', '.join(r['hala_hatali']) or '—'}\n"
+                    f"- **İki koşuda da doğru:** {r['degismedi_dogru']}")
     for baslik, yol in (("İlk koşu raporu (dondurulmuş)", olcum.ILK_RAPOR), ("Düzeltme sonrası rapor", olcum.SONRA_RAPOR)):
         with st.expander(baslik):
             md = olcum.rapor_oku(yol)
@@ -409,7 +420,7 @@ def _kaynak_bulma_kartlari():
         i, y = r["ilk"], r["sonra"]
         kartlar.append(S.kart(f"{grup} — {kume}", S.kac(f"tümü {olcum.kn(*i['tumu'])} → {olcum.kn(*y['tumu'])}"),
                               alt=f"en az biri {olcum.kn(*i['en_az_biri'])} → {olcum.kn(*y['en_az_biri'])} · madde {olcum.kn(*i['madde'])} → {olcum.kn(*y['madde'])}"))
-    S.html(S.kartlar(kartlar))
+    S.html(S.kartlar(kartlar, iki_sutun=True))
     st.caption("Tümü: talebin beklenen kaynak maddelerinin hepsi bulundu; en az biri: en az biri bulundu. BILMIYORUM/SORU_SOR/ENGELLE "
                "kaynak taşımadığı için bu tabloya girmez. Sayılar düzeltme sonrası raporun 8. bölümünden okunur.")
 
@@ -429,17 +440,16 @@ ADIMLAR = [
     ("İnsan onayı", "kod", "Onay bekler (otomatik onay yok); onaydan sonra uygulama kaydı tutulur."),
 ]
 SINIRLAMALAR = [
-    "Veri sentetiktir (kurgusal firma ve sözleşme); gerçek müşteri verisi yoktur.",
-    "Küçük yerel model (qwen3.5:4b) CPU'da çalışır: talep başına yaklaşık 10 sn ile 2 dk arası sürer (komut engelleme hızlı, hesaplama yapan talepler en yavaş).",
-    "Küçük model talep türü ve öncelik önerisinde hata yapabilir; bu yüzden kritik kararları insan verir. Zor sette öncelik kuralı maddesi hiç tam bulunamadı (0/7).",
-    "Yalnızca verilen SLA dokümanlarındaki kurallar kullanılır; dokümanda olmayan konuda \"bilmiyorum\" der.",
-    "Talepler tek model üzerinde sırayla işlenir; eşzamanlı yük test edilmedi.",
-    "Test seti küçüktür (59 talep, bağımsız alt küme 15): oranlar belirsizlik içerir, kaba bir göstergedir; düzeltme sonrası sayılar tam bağımsız değildir.",
-    "Onaydan sonraki işlemler (kredi, eskalasyon) prototipte yalnızca kayıt olarak tutulur; dış sistem ve bildirimler sentetik simülatördür (gerçek Zendesk/Jira/e-posta/Slack yok).",
+    "Veri sentetiktir (kurgusal firma ve sözleşmeler); gerçek müşteri verisi kullanılmadı.",
+    "Yerel, küçük bir model (qwen3.5:4b) CPU'da çalışır; talep başına yaklaşık 10 sn–2 dk sürer.",
+    "Küçük model zor taleplerde yanılabilir (zor sette öncelik kuralı maddesini tam bulma 0/7, en az birini bulma 6/7); bu yüzden kritik kararları insan verir.",
+    "Ajan yalnızca verilen SLA dokümanlarına dayanır; dokümanda olmayan konuda \"bilmiyorum\" der.",
+    "Değerlendirme 59 talep üzerinde yapıldı; sonuçlar yön göstericidir (yöntem ayrıntısı: Ölçüm bilgisi).",
+    "Prototip kapsamı: talepler tek model üzerinde sırayla işlenir; onay sonrası işlemler kayıt olarak tutulur, dış sistem ve bildirimler simülasyondur.",
 ]
 SINIRLAMA_AYRINTI = [
     "MCP sunucusu hesap araçlarını standart arayüzle sunar, ajan bu araçları doğrudan çağırır (gerçek bir MCP istemcisiyle uçtan uca denenmedi).",
-    "n8n akışında yalnızca ENGELLE ve ONAY_BEKLIYOR dalları canlı denendi, diğer dallar testlerle doğrulandı.",
+    "n8n akışında yalnızca ENGELLE ve ONAY_BEKLIYOR dalları canlı denendi; diğer dallar yapısal testlerle doğrulandı, canlı çalıştırılmadı.",
     "Düzeltmeler ilk koşu hatalarının kategorisine bakılarak yapıldı; temiz sayım ilk koşudur.",
     "Onaydan sonra gerçek sisteme yazılmaz; uygulanan işlemler kayıt olarak tutulur.",
     "Süre, makinenin o anki yüküne bağlıdır; küçük kümelerde tek talep yüzdeyi belirgin değiştirir.",
