@@ -1,0 +1,27 @@
+# SLA otomasyon kabuğu: n8n (yalnızca yerel erişim). Eski "n8n" container'ına dokunmaz; bu yeni container "sla-n8n".
+# Başlat:  cd n8n ; docker compose up -d      Durdur:  docker compose down   (veri volume'da kalır)
+services:
+  sla-n8n:
+    image: docker.n8n.io/n8nio/n8n:2.47.7          # sürüm sabit (latest kullanılmaz)
+    container_name: sla-n8n
+    restart: "no"
+    ports:
+      - "127.0.0.1:5678:5678"                      # yalnızca yerel makine
+    environment:
+      - GENERIC_TIMEZONE=Europe/Istanbul
+      - TZ=Europe/Istanbul
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_SECURE_COOKIE=false                    # http://localhost için
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"        # container'dan ana makinedeki servise (8000) ve simülatöre (8001) erişim
+    volumes:
+      - sla_n8n_veri:/home/node/.n8n               # kalıcı veri (git dışı, Docker named volume)
+      - ./sla_is_akisi.json:/import/sla_is_akisi.json:ro
+
+volumes:
+  sla_n8n_veri:

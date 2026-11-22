@@ -112,3 +112,55 @@ internete açılmamalıdır.
 Streamlit arayüzü `checkpoints.sqlite` kullanır. Dosyalar ayrı olduğu için ikisi birlikte çalışabilir, ancak model (Ollama)
 tek ve CPU'da olduğundan aynı anda iki taraftan talep göndermek her ikisini de yavaşlatır; demoda birini kullanın. Servis
 yeniden başlarsa bekleyen onaylar `servis_checkpoints.sqlite`'dan okunur (talep_id aynı kalır).
+
+## n8n otomasyon akışı
+
+Mimari: **destek simülatörü → n8n → ajan servisi → bildirim (simülatör)**.
+
+```
+Webhook (POST /webhook/yeni-talep)  ──┐
+Elle tetikle (yalnızca n8n arayüzü) ──┴─> GET simülatör /talepler/sonraki
+   -> POST servis /talep (202) -> [Bekle 10 sn -> GET servis /durum/{id} -> ISLENIYOR ise döngü, en çok ~20 yoklama]
+   -> Switch:
+        ONAY_BEKLIYOR            -> bildirim "Onay gerekli" (yüksek öncelik)  ── akış BURADA BİTER
+        ENGELLE                  -> bildirim (güvenlik/insan inceleme)
+        BILMIYORUM/SORU_SOR/ONCELIK_BELIRLENEMEDI -> bildirim (insan/müşteri yanıtı gerekli)
+        HESAPLA (onay gerekmez)  -> bildirim (özet)
+        ISLENEMEDI/beklenmeyen   -> bildirim (sistem uyarısı)      (zaman aşımında da bildirim)
+   -> her dalda sonuç simülatörün POST /talepler/{id}/sonuc ucuna yazılır
+```
+
+**Onayı n8n VERMEZ.** n8n akışı `/onay` uç noktasını hiçbir zaman çağırmaz (testle doğrulanır); "Onay gerekli" dalı yalnızca
+bildirim yazar ve biter. Onay yalnızca insandır: Streamlit arayüzü ya da elle `POST /onay/{talep_id}`.
+n8n içinde MCP istemcisi veya AI Agent düğümü **kullanılmaz**: yavaş yerel modelle (CPU'da 15–95 sn) uyumsuzdur ve
+karar zaten ajan servisindedir; akış yalnızca HTTP Request, Wait, IF/Switch ve Webhook gibi temel düğümler içerir.
+Dış sistem (`dis_sistem/simulator.py`) **sentetiktir; gerçek e-posta, Slack veya destek sistemine bağlı değildir.**
+
+Kurulum ve çalıştırma (Windows PowerShell, proje klasöründe; üç ayrı pencere):
+
+```powershell
+# 1) Ajan servisi: Docker'dan erişim için 0.0.0.0 (yalnızca yerel ağ, kimlik doğrulama yok; yukarıdaki güvenlik notuna bakın)
+python servis.py --host 0.0.0.0 --port 8000
+# 2) Dış sistem simülatörü (aynı güvenlik notu geçerli)
+python dis_sistem/simulator.py --host 0.0.0.0 --port 8001
+# 3) n8n (Docker; sürüm sabit, yalnızca 127.0.0.1:5678)
+cd n8n
+docker compose up -d
+# n8n tamamen açılınca (loglarda "n8n ready") workflow'u içe aktar ve yayınla, sonra container'ı yeniden başlat:
+docker exec sla-n8n n8n import:workflow --input=/import/sla_is_akisi.json
+docker exec sla-n8n n8n publish:workflow --id=slaIsAkisi0001
+docker restart sla-n8n
+# Tetikle (demo için simülatör Demo 1 ve Demo 2'yi sırayla verir)
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5678/webhook/yeni-talep -ContentType "application/json" -Body '{}'
+Invoke-RestMethod http://127.0.0.1:8001/bildirimler          # bildirimler
+Invoke-RestMethod http://127.0.0.1:8000/bekleyen              # onay bekleyenler
+```
+
+Notlar:
+- Container adı `sla-n8n`; dersten kalan eski `n8n` container'ından ayrıdır (ona dokunulmaz). İkisi de 5678'i kullanır:
+  eski container çalışırken `sla-n8n` başlamaz (port çakışması); biri durdurulmalıdır.
+- Git Bash'te `docker exec` yollarında `MSYS_NO_PATHCONV=1` gerekir (yol dönüşümünü kapatmak için).
+- Veri Docker named volume'unda (`n8n_sla_n8n_veri`) durur, git'e girmez. Akışta kimlik bilgisi veya anahtar yoktur;
+  bildirim ve sonuç kayıtları (`dis_sistem/bildirimler.jsonl`, `sonuclar.json`) git dışıdır. Demo öncesi `POST /sifirla` ile temizlenir.
+- İlk açılışta n8n arayüzü (http://127.0.0.1:5678) bir sahip hesabı oluşturmanızı ister; webhook akışı bunsuz da çalıştı.
+- Servis ve simülatörü `0.0.0.0`'da çalıştırmak onları yerel ağa açar; güvenilmeyen ağlarda kullanmayın.

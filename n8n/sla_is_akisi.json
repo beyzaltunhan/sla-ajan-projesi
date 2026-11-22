@@ -1,0 +1,761 @@
+{
+  "name": "SLA otomasyon akışı",
+  "id": "slaIsAkisi0001",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yeni-talep",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000001",
+      "name": "Webhook yeni-talep",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "5d0e2f10-1111-4222-8333-444455556666"
+    },
+    {
+      "parameters": {},
+      "id": "b7c1e5a0-0000-4000-8000-000000000002",
+      "name": "Elle tetikle (yalnızca n8n arayüzünde deneme)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8001/talepler/sonraki",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000003",
+      "name": "Sıradaki talep",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/talep",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ talep_metni: $json.talep_metni, kayit_zamani: $json.kayit_zamani, simdi: $json.simdi }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000004",
+      "name": "Ajana gönder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000005",
+      "name": "Bekle 10 sn",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        100
+      ],
+      "webhookId": "5d0e2f10-2222-4222-8333-444455556666"
+    },
+    {
+      "parameters": {
+        "url": "=http://host.docker.internal:8000/durum/{{ $('Ajana gönder').first().json.talep_id }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000006",
+      "name": "Durum sorgula",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b7c1e5a0-0000-4000-8000-000000000007",
+              "leftValue": "={{ $json.durum }}",
+              "rightValue": "ISLENIYOR",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000008",
+      "name": "Hâlâ işleniyor mu?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1500,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b7c1e5a0-0000-4000-8000-000000000009",
+              "leftValue": "={{ $runIndex }}",
+              "rightValue": 19,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000010",
+      "name": "Yoklama sınırı aşılmadı mı? (en çok ~20)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b7c1e5a0-0000-4000-8000-000000000011",
+                    "leftValue": "={{ $json.durum === 'ONAY_BEKLIYOR' }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ONAY_BEKLIYOR"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b7c1e5a0-0000-4000-8000-000000000012",
+                    "leftValue": "={{ $json.durum === 'TAMAMLANDI' && $json.cikti?.davranis === 'ENGELLE' }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ENGELLE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b7c1e5a0-0000-4000-8000-000000000013",
+                    "leftValue": "={{ $json.durum === 'TAMAMLANDI' && ['BILMIYORUM','SORU_SOR','ONCELIK_BELIRLENEMEDI'].includes($json.cikti?.davranis) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "BILMIYORUM / SORU_SOR / ONCELIK_BELIRLENEMEDI"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b7c1e5a0-0000-4000-8000-000000000014",
+                    "leftValue": "={{ $json.durum === 'TAMAMLANDI' && $json.cikti?.davranis === 'HESAPLA' }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "HESAPLA (onay gerekmez)"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "ISLENEMEDI / beklenmeyen"
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000015",
+      "name": "Sonuca göre",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/bildirim",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ kanal: 'onay-kuyrugu', oncelik: 'yuksek', talep_id: $json.talep_id, baslik: 'Onay gerekli: ' + $json.cikti.musteri + ' / ' + $json.cikti.oncelik + ' / ' + $json.cikti.risk, mesaj: 'Müşteri: ' + $json.cikti.musteri + ' (' + $json.cikti.paket + '); öncelik: ' + $json.cikti.oncelik + '; risk: ' + $json.cikti.risk + '; kredi önerisi: %' + $json.cikti.kredi.yuzde + ' (' + $json.cikti.kredi.tutar + ' TL); onay nedenleri: ' + $json.cikti.onay_nedenleri.join(', ') + '. Ajan talep_id: ' + $json.talep_id + ' (destek talebi ' + $('Sıradaki talep').first().json.talep_id + '). Karar yalnızca yöneticidedir (Streamlit arayüzü ya da elle POST /onay); n8n onay vermez.' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000016",
+      "name": "Bildirim: onay gerekli",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://host.docker.internal:8001/talepler/{{ $('Sıradaki talep').first().json.talep_id }}/sonuc",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ dis_talep_id: $('Sıradaki talep').first().json.talep_id, ajan_talep_id: $('Ajana gönder').first().json.talep_id, n8n_dal: 'onay', durum: $('Durum sorgula').last().json.durum, cikti: $('Durum sorgula').last().json.cikti, sure_sn: $('Durum sorgula').last().json.sure_sn, hata: $('Durum sorgula').last().json.hata }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000017",
+      "name": "Sonuç yaz (onay)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2530,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/bildirim",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ kanal: 'guvenlik-insan-inceleme', oncelik: 'orta', talep_id: $('Sıradaki talep').first().json.talep_id, baslik: 'Komut içerikli talep işlenmedi', mesaj: 'Komut içerikli talep işlenmedi (destek talebi ' + $('Sıradaki talep').first().json.talep_id + '): ' + $json.cikti.mesaj }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000018",
+      "name": "Bildirim: komut içerikli talep engellendi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://host.docker.internal:8001/talepler/{{ $('Sıradaki talep').first().json.talep_id }}/sonuc",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ dis_talep_id: $('Sıradaki talep').first().json.talep_id, ajan_talep_id: $('Ajana gönder').first().json.talep_id, n8n_dal: 'engel', durum: $('Durum sorgula').last().json.durum, cikti: $('Durum sorgula').last().json.cikti, sure_sn: $('Durum sorgula').last().json.sure_sn, hata: $('Durum sorgula').last().json.hata }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000019",
+      "name": "Sonuç yaz (engel)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2530,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/bildirim",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ kanal: 'insan-destek', oncelik: 'normal', talep_id: $('Sıradaki talep').first().json.talep_id, baslik: 'İnsan/müşteri yanıtı gerekli: ' + $json.cikti.davranis, mesaj: $json.cikti.davranis + ' (destek talebi ' + $('Sıradaki talep').first().json.talep_id + '): ' + $json.cikti.mesaj }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000020",
+      "name": "Bildirim: insan/müşteri yanıtı gerekli",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://host.docker.internal:8001/talepler/{{ $('Sıradaki talep').first().json.talep_id }}/sonuc",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ dis_talep_id: $('Sıradaki talep').first().json.talep_id, ajan_talep_id: $('Ajana gönder').first().json.talep_id, n8n_dal: 'soru', durum: $('Durum sorgula').last().json.durum, cikti: $('Durum sorgula').last().json.cikti, sure_sn: $('Durum sorgula').last().json.sure_sn, hata: $('Durum sorgula').last().json.hata }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000021",
+      "name": "Sonuç yaz (soru)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2530,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/bildirim",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ kanal: 'destek-ozet', oncelik: 'normal', talep_id: $('Sıradaki talep').first().json.talep_id, baslik: 'Talep değerlendirildi: ' + $json.cikti.musteri + ' / ' + $json.cikti.oncelik, mesaj: $json.cikti.mesaj + ' Son tarih: ' + $json.cikti.son_tarih + ', risk: ' + $json.cikti.risk + '.' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000022",
+      "name": "Bildirim: talep özeti (onay gerekmez)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://host.docker.internal:8001/talepler/{{ $('Sıradaki talep').first().json.talep_id }}/sonuc",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ dis_talep_id: $('Sıradaki talep').first().json.talep_id, ajan_talep_id: $('Ajana gönder').first().json.talep_id, n8n_dal: 'ozet', durum: $('Durum sorgula').last().json.durum, cikti: $('Durum sorgula').last().json.cikti, sure_sn: $('Durum sorgula').last().json.sure_sn, hata: $('Durum sorgula').last().json.hata }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000023",
+      "name": "Sonuç yaz (ozet)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2530,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/bildirim",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ kanal: 'sistem-uyari', oncelik: 'yuksek', talep_id: $('Sıradaki talep').first().json.talep_id, baslik: 'Ajan talebi işleyemedi', mesaj: 'Durum: ' + $json.durum + '. Ayrıntı: ' + JSON.stringify($json.hata || $json.cikti || {}) + ' (destek talebi ' + $('Sıradaki talep').first().json.talep_id + ')' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000024",
+      "name": "Bildirim: ajan talebi işleyemedi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://host.docker.internal:8001/talepler/{{ $('Sıradaki talep').first().json.talep_id }}/sonuc",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ dis_talep_id: $('Sıradaki talep').first().json.talep_id, ajan_talep_id: $('Ajana gönder').first().json.talep_id, n8n_dal: 'hata', durum: $('Durum sorgula').last().json.durum, cikti: $('Durum sorgula').last().json.cikti, sure_sn: $('Durum sorgula').last().json.sure_sn, hata: $('Durum sorgula').last().json.hata }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000025",
+      "name": "Sonuç yaz (hata)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2530,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/bildirim",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ kanal: 'sistem-uyari', oncelik: 'yuksek', talep_id: $('Sıradaki talep').first().json.talep_id, baslik: 'Ajan yanıtı zaman aşımına uğradı', mesaj: 'Ajan talep_id ' + $('Ajana gönder').first().json.talep_id + ' için ~20 yoklamada sonuç vermedi (destek talebi ' + $('Sıradaki talep').first().json.talep_id + '). Servis ve Ollama durumunu kontrol edin.' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000026",
+      "name": "Bildirim: zaman aşımı",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://host.docker.internal:8001/talepler/{{ $('Sıradaki talep').first().json.talep_id }}/sonuc",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ dis_talep_id: $('Sıradaki talep').first().json.talep_id, ajan_talep_id: $('Ajana gönder').first().json.talep_id, n8n_dal: 'zaman_asimi', durum: 'ZAMAN_ASIMI' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000027",
+      "name": "Sonuç yaz (zaman aşımı)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2530,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Onayı n8n VERMEZ\nBu akış /onay uç noktasını HİÇ çağırmaz. 'Onay gerekli' dalı yalnızca bildirim yazar ve BURADA BİTER. Onay yalnızca insandır (Streamlit arayüzü ya da elle POST /onay).\n\nMCP istemcisi ve AI Agent düğümü kullanılmaz; yalnızca HTTP/Wait/IF/Switch.",
+        "height": 200,
+        "width": 420
+      },
+      "id": "b7c1e5a0-0000-4000-8000-000000000028",
+      "name": "Not: n8n onay vermez",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        700
+      ]
+    }
+  ],
+  "connections": {
+    "Sonuca göre": {
+      "main": [
+        [
+          {
+            "node": "Bildirim: onay gerekli",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bildirim: komut içerikli talep engellendi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bildirim: insan/müşteri yanıtı gerekli",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bildirim: talep özeti (onay gerekmez)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bildirim: ajan talebi işleyemedi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bildirim: onay gerekli": {
+      "main": [
+        [
+          {
+            "node": "Sonuç yaz (onay)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bildirim: komut içerikli talep engellendi": {
+      "main": [
+        [
+          {
+            "node": "Sonuç yaz (engel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bildirim: insan/müşteri yanıtı gerekli": {
+      "main": [
+        [
+          {
+            "node": "Sonuç yaz (soru)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bildirim: talep özeti (onay gerekmez)": {
+      "main": [
+        [
+          {
+            "node": "Sonuç yaz (ozet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bildirim: ajan talebi işleyemedi": {
+      "main": [
+        [
+          {
+            "node": "Sonuç yaz (hata)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook yeni-talep": {
+      "main": [
+        [
+          {
+            "node": "Sıradaki talep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Elle tetikle (yalnızca n8n arayüzünde deneme)": {
+      "main": [
+        [
+          {
+            "node": "Sıradaki talep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sıradaki talep": {
+      "main": [
+        [
+          {
+            "node": "Ajana gönder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ajana gönder": {
+      "main": [
+        [
+          {
+            "node": "Bekle 10 sn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bekle 10 sn": {
+      "main": [
+        [
+          {
+            "node": "Durum sorgula",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Durum sorgula": {
+      "main": [
+        [
+          {
+            "node": "Hâlâ işleniyor mu?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hâlâ işleniyor mu?": {
+      "main": [
+        [
+          {
+            "node": "Yoklama sınırı aşılmadı mı? (en çok ~20)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sonuca göre",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Yoklama sınırı aşılmadı mı? (en çok ~20)": {
+      "main": [
+        [
+          {
+            "node": "Bekle 10 sn",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bildirim: zaman aşımı",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bildirim: zaman aşımı": {
+      "main": [
+        [
+          {
+            "node": "Sonuç yaz (zaman aşımı)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Istanbul"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
