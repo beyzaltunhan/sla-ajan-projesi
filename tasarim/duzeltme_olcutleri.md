@@ -39,3 +39,7 @@ Geliştirme seti: eski 31 örnek (`GELISTIRME_ONCELIK`) + yeni 10 örnek (`GELIS
 | Çağrı süresi artışı | ölçülür ve raporlanır (tek başına ret sebebi değil) |
 
 Yöntem: (1) mevcut yapıyla yeni 10 ölçülür (düzeltme öncesi referans), (2) düzeltme, (3) yeni 10 + eski 31 tekrar ölçülür. Ölçüt tutmazsa sıra: (a) istem/few-shot/çekirdek iyileştirme, (b) yalnızca bu adım için daha büyük yerel model (RAM ve gecikme raporlanır), (c) kısmen koda alma. En fazla 2 deneme turu. Bu çalışmada 59 talepli koşu yapılmaz.
+
+### Tur 1 sonucu ve Tur 2 planı (22 Kasım 2026; Tur 2 ölçümünden ÖNCE yazıldı; ölçütler değişmedi)
+Tur 1 (çekirdek +2.1/2.2, karar basamakları, +2 few-shot): yeni 10 → 9/10 (düzeltme öncesi de 9/10), **eski 31 → 30/31 (ölçüt 31/31 TUTMADI)**. Gerileme: görünüm hatası bildirimi + geçici çözüm olan bir P3 talebi P4 verildi; kural (b) "geçici çözüm = bir alt seviye" fazla uygulandı. Dokümanda (6.1) P4 yalnızca bilgi isteği/kullanım sorusudur; hata bildirimi en az P3'tür.
+Tur 2 değişikliği (yalnızca istem, başka bir şey değişmez): karar basamağı (b)'ye "Sorun/hata bildirimi hiçbir zaman P4 olmaz (en düşük seviye P3); P4 yalnızca bilgi isteği ya da kullanım sorusudur (Madde 6.1)" cümlesi eklenecek.
