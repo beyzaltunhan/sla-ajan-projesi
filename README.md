@@ -14,8 +14,15 @@ streamlit run arayuz/uygulama.py
   yan çubuktaki "Modeli ısıt" düğmesiyle tekrarlanabilir.
 - Arayüz ajanı olduğu gibi kullanır (`ajan.talep_isle` / `ajan.onay_ver`). Bekleyen onaylar `checkpoints.sqlite` içinde
   tutulur; uygulama yeniden başlasa da listelenir.
-- Sekmeler: **Talep İşle**, **Ölçüm Sonuçları**, **Mimari ve Sınırlamalar**, **Kayıtlı Çalıştırmalar**
+- Sekmeler: **Talep İşle**, **Bildirimler**, **Ölçüm Sonuçları**, **Mimari ve Sınırlamalar**, **Kayıtlı Çalıştırmalar**
   (önceden çalıştırılmış, canlı olmayan kayıtlar; `demo/kayitli_sonuclar.json`).
+- **Bildirimler** sekmesi `dis_sistem/bildirimler.jsonl` dosyasını okur (n8n akışının ve simülatörün yazdığı sentetik bildirimler;
+  gerçek e-posta/Slack değildir), yeniden eskiye kartlar halinde gösterir; "Yenile" düğmesi vardır. "Onay gerekli"
+  (`onay-kuyrugu`) kartlarında **Onayla / Reddet** düğmeleri ajan servisini çağırır (`http://127.0.0.1:8000`; değiştirmek için
+  ortam değişkeni `SLA_SERVIS_URL`): önce `GET /durum` ile `ONAY_BEKLIYOR` doğrulanır, sonra `POST /onay` gönderilir; reddetmek
+  için gerekçe zorunludur. Bu düğmeler **insan kararıdır**, hiçbir şey otomatik onaylanmaz. Servis kapalıysa "Ajan servisi
+  çalışmıyor" uyarısı görünür; karara bağlanmış talepte düğmeler pasif olur ve karar kartı gösterilir. Bildirim dosyasının
+  yolu `SLA_BILDIRIM_DOSYASI` ile değiştirilebilir. Onay düğmelerinin çalışması için `python servis.py` çalışıyor olmalıdır.
 - Kayıtlı sonuçları yenilemek için: `python demo/kayit_al.py`.
 
 ## Demo hazırlık listesi

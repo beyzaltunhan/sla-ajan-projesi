@@ -1,6 +1,7 @@
 """Ölçüm sonuçlarını dosyalardan OKUR (sayılar kodda elle yazılmaz): ham jsonl -> degerlendirme/ ölçüm mantığı."""
 from __future__ import annotations
 
+import re
 import statistics
 import sys
 from collections import Counter
@@ -75,3 +76,43 @@ def rapor_oku(yol: Path) -> str | None:
         return yol.read_text(encoding="utf-8")
     except OSError:
         return None
+
+
+# ------------------------------------------------------------------ hata adı etiketleri ve "doğru kaynak bulma"
+HATA_ADI = {"1a": "1a Müşteri bulma", "1b": "1b Komut tespiti", "1c": "1c Talep türü", "1d": "1d Firma adı yedeği",
+            "4 öncelik önerisi": "Öncelik önerisi", "5": "Öncelik yönlendirme", "6": "Hesaplar"}
+
+
+def hata_adi(a: str) -> str:
+    """Hata adımı kodunu okunur ada çevirir (bilinmeyen kod olduğu gibi kalır)."""
+    return HATA_ADI.get(a, a)
+
+
+def _kac(metin: str) -> tuple[int, int]:
+    a, b = metin.strip().split("/")
+    return int(a), int(b)
+
+
+def kaynak_bulma(rapor_metni: str | None) -> list[dict]:
+    """duzeltme_sonrasi_rapor.md içindeki "Doğru kaynak maddeyi bulma" tablosunu OKUR (sayılar kodda yazılı değildir).
+    Satır: kume, grup, talep, ilk/sonra = {tumu, en_az_biri, madde} (her biri (doğru, N))."""
+    if not rapor_metni:
+        return []
+    m = re.search(r"^##\s*\d+\.\s*Doğru kaynak maddeyi bulma.*?(?=^##\s|\Z)", rapor_metni, re.S | re.M)
+    if not m:
+        return []
+    sonuc = []
+    for satir in m.group(0).splitlines():
+        h = [x.strip() for x in satir.strip().strip("|").split("|")]
+        if len(h) != 5 or not h[2].isdigit():
+            continue
+        try:
+            ilk = [_kac(x) for x in h[3].split(" / ")]
+            sonra = [_kac(x) for x in h[4].split(" / ")]
+        except ValueError:
+            continue
+        if len(ilk) != 3 or len(sonra) != 3:
+            continue
+        ad = ("tumu", "en_az_biri", "madde")
+        sonuc.append({"kume": h[0], "grup": h[1], "talep": int(h[2]), "ilk": dict(zip(ad, ilk)), "sonra": dict(zip(ad, sonra))})
+    return sonuc

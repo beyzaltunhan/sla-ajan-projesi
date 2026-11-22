@@ -13,11 +13,12 @@ import streamlit as st
 import ajan
 import config
 from arayuz import bicimle as B
+from arayuz import bildirimler as BL
 from arayuz import kayitli, model, olcum
 from arayuz import stil as S
 
 # ------------------------------------------------------------------ yardımcılar
-SEKMELER = ["Talep İşle", "Ölçüm Sonuçları", "Mimari ve Sınırlamalar", "Kayıtlı Çalıştırmalar"]
+SEKMELER = ["Talep İşle", "Bildirimler", "Ölçüm Sonuçları", "Mimari ve Sınırlamalar", "Kayıtlı Çalıştırmalar"]
 
 
 def _durum_baslat():
@@ -343,13 +344,15 @@ def olcum_sekmesi():
     st.markdown("**Tam doğru talep sayısı** (küme büyüklükleri: " + ", ".join(f"{k}: {ilk['tam'][k][1]}" for k in kume) + ")")
     st.bar_chart(pd.DataFrame({"İlk koşu": [ilk["tam"][k][0] for k in kume], "Düzeltme sonrası": [sonra["tam"][k][0] for k in kume]},
                               index=list(kume)), color=["#9aa8bd", S.VURGU], stack=False)
+    _kaynak_bulma_kartlari()
     st.subheader("Hata türleri (hatalı talep sayısı, adım bazında)")
     adimlar = sorted({a for k in ("Ana set", "Zor set") for a in set(ilk["hata_turleri"][k]) | set(sonra["hata_turleri"][k])})
     if adimlar:
+        etiket = [olcum.hata_adi(a) for a in adimlar]
         st.bar_chart(pd.DataFrame(
             {"İlk koşu": [sum(ilk["hata_turleri"][k].get(a, 0) for k in ("Ana set", "Zor set")) for a in adimlar],
              "Düzeltme sonrası": [sum(sonra["hata_turleri"][k].get(a, 0) for k in ("Ana set", "Zor set")) for a in adimlar]},
-            index=adimlar), color=["#9aa8bd", S.VURGU], stack=False)
+            index=etiket), color=["#9aa8bd", S.VURGU], stack=False, horizontal=True, height=60 + 90 * len(adimlar))
     st.subheader("Talep bazında değişim")
     st.markdown(f"- **Düzeldi ({len(r['duzeldi'])}):** {', '.join(r['duzeldi']) or '—'}\n"
                 f"- **Bozuldu — yeni regresyon ({len(r['bozuldu'])}):** {', '.join(r['bozuldu']) or '—'}\n"
@@ -359,6 +362,25 @@ def olcum_sekmesi():
         with st.expander(baslik):
             md = olcum.rapor_oku(yol)
             st.markdown(md) if md else st.warning(f"{yol.name} bulunamadı.")
+
+
+def _kaynak_bulma_kartlari():
+    """Doğru kaynak maddeyi bulma: sonuclar/duzeltme_sonrasi_rapor.md içindeki tablodan OKUNUR (sayı kodda yazılı değildir)."""
+    satirlar = olcum.kaynak_bulma(olcum.rapor_oku(olcum.SONRA_RAPOR))
+    st.subheader("Doğru kaynak maddeyi bulma (kaç/N)")
+    if not satirlar:
+        st.caption("Doğru kaynak bulma tablosu raporda bulunamadı.")
+        return
+    kartlar = []
+    for r in satirlar:
+        kume = r["kume"].split(" (")[0]
+        grup = "Öncelik kuralı (Doküman 02)" if r["grup"].startswith("02") else "Hesap kaynakları (Doküman 01/03/04)"
+        i, y = r["ilk"], r["sonra"]
+        kartlar.append(S.kart(f"{grup} — {kume}", S.kac(f"tümü {olcum.kn(*i['tumu'])} → {olcum.kn(*y['tumu'])}"),
+                              alt=f"en az biri {olcum.kn(*i['en_az_biri'])} → {olcum.kn(*y['en_az_biri'])} · madde {olcum.kn(*i['madde'])} → {olcum.kn(*y['madde'])}"))
+    S.html(S.kartlar(kartlar))
+    st.caption("Tümü: talebin beklenen kaynak maddelerinin hepsi bulundu; en az biri: en az biri bulundu. BILMIYORUM/SORU_SOR/ENGELLE "
+               "kaynak taşımadığı için bu tabloya girmez. Sayılar düzeltme sonrası raporun 8. bölümünden okunur.")
 
 
 # ------------------------------------------------------------------ Mimari ve Sınırlamalar
@@ -380,7 +402,7 @@ SINIRLAMALAR = [
     "Küçük model (qwen3.5:4b) CPU'da çalışır; talep başına yaklaşık 15–100 sn sürer.",
     "Düzeltme sonrası sayılar tam bağımsız değildir (düzeltmeler ilk koşu hatalarının kategorisine bakılarak yapıldı).",
     "Onaydan sonraki işlemler prototipte yalnızca kayıt olarak tutulur; gerçek sisteme yazılmaz.",
-    "Dış sistem / n8n entegrasyonu yoktur (gelecek çalışma).",
+    "Dış sistem ve bildirimler sentetik simülatördür; gerçek Zendesk/Jira/e-posta/Slack bağlı değildir. n8n akışı yalnızca iki dalla (ENGELLE ve onay gerekli) canlı denendi.",
     "Test seti küçüktür (59 talep); sayılar kaba bir göstergedir.",
 ]
 
@@ -398,6 +420,41 @@ def akis_html(adimlar=ADIMLAR) -> str:
     return '<div class="akis">' + "".join(parca) + "</div>"
 
 
+DIS_KATMANLAR = [   # (ad, sınıf, etiket, açıklama, sentetik mi)
+    ("Destek sistemi", "dis", "SENTETİK", "Simülatör (dis_sistem/simulator.py): sabit Demo 1 ve Demo 2 talepleri.", True),
+    ("n8n", "dis", "OTOMASYON", "Talebi alır, ajan servisini çağırır, sonucu yoklar ve bildirime yönlendirir. KARAR VE ONAY VERMEZ.", False),
+    ("Ajan servisi (FastAPI)", "kod", "KOD", "POST /talep (asenkron), GET /durum, POST /onay; talepleri sırayla işler.", False),
+    ("Ajan (LangGraph)", "model", "MODEL + KOD", "Karar akışı: model adımları ve deterministik hesaplar; insan onayı.", False),
+]
+DIS_KATMANLAR_2 = [
+    [("Streamlit arayüzü", "dis", "ARAYÜZ", "İnsan onayı ve izleme; ajanı doğrudan çağırır.", False),
+     ("Ajan (LangGraph)", "model", "MODEL + KOD", "talep_isle / onay_ver", False)],
+    [("MCP sunucusu", "kod", "KOD", "Dört deterministik hesap aracını dış istemciye açar (LLM adımları açılmaz).", False),
+     ("Hesap araçları", "kod", "KOD", "sla_araclari: müşteri arama, son tarih, risk, kredi.", False)],
+    [("n8n", "dis", "OTOMASYON", "Bildirim yazar; /onay çağırmaz.", False),
+     ("Bildirim (simülatör)", "dis", "SENTETİK", "Gerçek e-posta/Slack değil; bildirimler.jsonl dosyası. Bildirimler sekmesinde görünür.", True)],
+]
+
+
+def _dis_dugum(d) -> str:
+    ad, sinif, etiket, aciklama, sentetik = d
+    return (f'<div class="dugum {sinif}{" sentetik" if sentetik else ""}"><b>{S.kac(ad)}</b>'
+            f'<span class="etiket {"sen" if sentetik else ("dis" if sinif == "dis" else sinif)}">{S.kac(etiket)}</span>'
+            f'<div style="font-size:.8rem;margin-top:.25rem">{S.kac(aciklama)}</div></div>')
+
+
+def dis_akis_html() -> str:
+    """Dış katmanlar şeması (HTML/CSS): ana zincir + yan bağlantılar. SENTETİK olanlar kesikli kenarlıklı ve etiketli."""
+    def satir(liste):
+        parca = []
+        for i, d in enumerate(liste):
+            parca.append(_dis_dugum(d))
+            if i < len(liste) - 1:
+                parca.append('<div class="ok">→</div>')
+        return '<div class="akis">' + "".join(parca) + "</div>"
+    return satir(DIS_KATMANLAR) + "".join(satir(r) for r in DIS_KATMANLAR_2)
+
+
 def mimari_sekmesi():
     st.subheader("Akış: hangi adım model, hangisi kod")
     S.html('<div class="lejant"><span><span class="etiket model">MODEL</span> dil modeli çağrısı</span>'
@@ -406,6 +463,12 @@ def mimari_sekmesi():
     st.markdown("**Çıkışlar:** " + " ".join(S.davranis_rozeti(d) for d in
                                            ("ENGELLE", "BILMIYORUM", "SORU_SOR", "ONCELIK_BELIRLENEMEDI", "HESAPLA")),
                 unsafe_allow_html=True)
+    st.subheader("Dış katmanlar")
+    S.html('<div class="lejant"><span><span class="etiket dis">DIŞ KATMAN</span> otomasyon / arayüz</span>'
+           '<span><span class="etiket sen">SENTETİK</span> kesikli kenar: gerçek sisteme bağlı değil</span></div>')
+    S.html(dis_akis_html())
+    st.info("n8n karar vermez, onay vermez: yalnızca ajan servisini çağırır ve sonucu bildirime yönlendirir. "
+            "Onay yalnızca insandır (Streamlit arayüzü ya da elle POST /onay).")
     st.subheader("Karar sırası özeti")
     st.markdown("1. Komut içeren talep **işlenmez** (ENGELLE).\n"
                 "2. Müşteri bulunamazsa/belirsizse **sorulur**; kayıtsız firma, kapsam dışı ya da dokümanda olmayan konu için "
@@ -417,6 +480,74 @@ def mimari_sekmesi():
     for x in SINIRLAMALAR:
         st.markdown(f"- {x}")
     st.caption(f"Model: {config.CHAT_MODEL} (think kapalı) · Embedding: {config.EMBED_MODEL}")
+
+
+# ------------------------------------------------------------------ Bildirimler
+def _bildirim_karti(b: dict, anahtar: str, servis_acik: bool):
+    kanal_ad, kanal_sinif = BL.KANALLAR.get(b.get("kanal"), (b.get("kanal") or "bilinmeyen kanal", "yok"))
+    onc_ad, onc_sinif = BL.ONCELIK.get(b.get("oncelik"), (b.get("oncelik") or "—", "yok"))
+    S.html('<div class="bildirim">'
+           f'<div class="ust">{S.rozet(kanal_ad, kanal_sinif)} <span class="teknik">kanal: {S.kac(b.get("kanal", "—"))}</span> '
+           f'{S.rozet("Öncelik: " + str(onc_ad), onc_sinif)}<span class="teknik zaman-sag">{S.kac(BL.zaman_yaz(b.get("zaman")))}</span></div>'
+           f'<div class="bb">{S.kac(b.get("baslik", ""))}</div><div class="bm">{S.kac(b.get("mesaj", ""))}</div>'
+           f'<div class="teknik">talep_id: {S.kac(b.get("talep_id") or "—")}</div></div>')
+    if BL.onay_karti_mi(b):
+        _bildirim_onay(b, anahtar, servis_acik)
+
+
+def _bildirim_onay(b: dict, anahtar: str, servis_acik: bool):
+    ss = st.session_state
+    tid = b["talep_id"]
+    karar = ss.setdefault("bildirim_kararlari", {}).get(tid)
+    durum = None
+    if karar is None and servis_acik:
+        try:
+            durum = BL.servis_durum(tid)
+        except Exception as e:  # noqa: BLE001
+            st.warning(BL.hata_metni(e))
+            durum = {"durum": "BILINMIYOR"}
+        if durum.get("onay_sonucu"):
+            karar = durum
+    if karar is not None:
+        _karar_karti(karar.get("onay_sonucu") or {})
+        st.caption("Bu talep karara bağlandı; düğmeler pasif.")
+        return
+    bekliyor = servis_acik and (durum or {}).get("durum") == "ONAY_BEKLIYOR"
+    if not servis_acik:
+        st.warning(BL.hata_metni(BL.ServisKapali(BL.servis_adresi())))
+    elif not bekliyor:
+        st.info(f"Talep şu an onay beklemiyor (durum: {(durum or {}).get('durum')}); düğmeler pasif.")
+    st.caption("Bu düğmeler İNSAN kararıdır; hiçbir şey otomatik onaylanmaz. n8n onay vermez.")
+    gerekce = st.text_input("Gerekçe (Reddet için zorunlu)", key=f"bgerekce_{anahtar}", disabled=not bekliyor)
+    c1, c2 = st.columns(2)
+    verilen = "onayla" if c1.button("Onayla", key=f"bonay_{anahtar}", type="primary", disabled=not bekliyor) else \
+        ("reddet" if c2.button("Reddet", key=f"bred_{anahtar}", disabled=not bekliyor) else None)
+    if verilen:
+        if verilen == "reddet" and not gerekce.strip():
+            st.error("Reddetmek için gerekçe zorunludur; istek gönderilmedi.")
+            return
+        try:
+            yanit = BL.onay_gonder(tid, verilen, gerekce)
+        except Exception as e:  # noqa: BLE001  (servis kapalı, 409, 404 ... : çökme yok)
+            st.error(BL.hata_metni(e))
+            return
+        ss.bildirim_kararlari[tid] = yanit
+        st.rerun()
+
+
+def bildirimler_sekmesi():
+    st.markdown("Ajan servisinin ve n8n akışının ürettiği **sentetik** bildirimler (`dis_sistem/bildirimler.jsonl`). "
+                "Gerçek e-posta/Slack'e gönderilmez.")
+    st.button("Yenile", key="bildirim_yenile")                      # tıklama sayfayı yeniden çalıştırır
+    liste = BL.oku()
+    if not liste:
+        st.info("Henüz bildirim yok.")
+        return
+    gosterilen = liste[:30]
+    servis_acik = BL.servis_calisiyor() if any(BL.onay_karti_mi(b) for b in gosterilen) else True
+    st.caption(f"{len(liste)} bildirim" + (f" (en yeni {len(gosterilen)} gösteriliyor)" if len(liste) > len(gosterilen) else "") + " · yeniden eskiye")
+    for i, b in enumerate(gosterilen):
+        _bildirim_karti(b, f"{i}_{b.get('talep_id')}_{b.get('zaman')}", servis_acik)
 
 
 # ------------------------------------------------------------------ Kayıtlı çalıştırmalar
@@ -446,9 +577,11 @@ def sayfa():
     yan_cubuk()
     st.title("SLA Uyum ve Eskalasyon Ajanı")
     st.caption("Poyraz Bulut Yazılım A.Ş. (kurgusal) — prototip. Veri sentetiktir.")
-    t1, t2, t3, t4 = st.tabs(SEKMELER)
+    t1, tb, t2, t3, t4 = st.tabs(SEKMELER)
     with t1:
         talep_sekmesi()
+    with tb:
+        bildirimler_sekmesi()
     with t2:
         olcum_sekmesi()
     with t3:

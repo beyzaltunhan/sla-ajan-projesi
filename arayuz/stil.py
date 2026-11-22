@@ -12,7 +12,12 @@ LACIVERT = "#0f1f3d"
 CSS = f"""
 <style>
 .stAppDeployButton, [data-testid="stToast"], [data-testid="stDecoration"] {{ display: none !important; }}
-.block-container {{ padding-top: 2rem; max-width: 1180px; }}
+header[data-testid="stHeader"] {{ background: #f5f7fa; box-shadow: none; border-bottom: 0; }}
+header[data-testid="stHeader"]::before, header[data-testid="stHeader"]::after {{ display: none; }}
+[data-testid="stAppViewContainer"], [data-testid="stMain"] {{ border: 0; }}
+.block-container {{ padding-top: 4rem; max-width: 1180px; }}
+div[data-baseweb="tab-list"] {{ background: #f5f7fa; padding-top: .35rem; }}
+button[data-baseweb="tab"] {{ height: auto; min-height: 2.6rem; padding-top: .45rem; padding-bottom: .45rem; overflow: visible; }}
 h1, h2, h3, h4 {{ color: {LACIVERT}; letter-spacing: -0.01em; }}
 section[data-testid="stSidebar"] {{ min-width: 330px; max-width: 330px; }}
 section[data-testid="stSidebar"] * {{ white-space: normal; overflow-wrap: anywhere; }}
@@ -75,6 +80,15 @@ section[data-testid="stSidebar"] * {{ white-space: normal; overflow-wrap: anywhe
 .akis .dugum b {{ display: block; margin-bottom: .1rem; }}
 .akis .ok {{ align-self: center; color: #5b6b86; font-size: 1.3rem; padding: 0 .1rem; }}
 .lejant span {{ margin-right: 1rem; }}
+.etiket.dis {{ background: #e3e8fb; color: #2b3a8c; }}
+.etiket.sen {{ background: #fff3cd; color: #6b4a00; border: 1px dashed #d99a00; }}
+.akis .dugum.dis {{ background: #eef0fb; border-color: #8f9bd8; color: #1f2a6b; }}
+.akis .dugum.sentetik {{ border-style: dashed; border-width: 2px; border-color: #d99a00; background: #fffaf0; color: #5b4300; }}
+.bildirim {{ background: #fff; border: 1px solid #dbe2ec; border-left: 6px solid {VURGU}; border-radius: 12px; padding: .8rem 1rem; margin: .7rem 0 .3rem 0; }}
+.bildirim .ust {{ display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-bottom: .35rem; }}
+.bildirim .zaman-sag {{ margin-left: auto; }}
+.bildirim .bb {{ font-weight: 700; font-size: 1.1rem; color: {LACIVERT}; }}
+.bildirim .bm {{ margin: .2rem 0 .3rem 0; }}
 </style>
 """
 
