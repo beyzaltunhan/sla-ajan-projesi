@@ -1,22 +1,25 @@
-"""Streamlit bileşenleri. Görsel stil 7B'de eklenecek: tüm çıktı bu dosyadaki küçük fonksiyonlardan geçer."""
+"""Streamlit bileşenleri (Adım 7B: görsel tasarım). İşlevler 7A ile aynıdır; görünüm arayuz/stil.py'den gelir."""
 from __future__ import annotations
 
-import json
+import re
+import subprocess
 import threading
 import time
 from datetime import datetime
+from html import escape
 
 import streamlit as st
 
 import ajan
 import config
 from arayuz import bicimle as B
-from arayuz import model, olcum
-
-ONAY_YOK = "Bu talep için onay gerekmiyor."
-
+from arayuz import kayitli, model, olcum
+from arayuz import stil as S
 
 # ------------------------------------------------------------------ yardımcılar
+SEKMELER = ["Talep İşle", "Ölçüm Sonuçları", "Mimari ve Sınırlamalar", "Kayıtlı Çalıştırmalar"]
+
+
 def _durum_baslat():
     ss = st.session_state
     ss.setdefault("sayac", 0)
@@ -30,32 +33,65 @@ def _birlestir(d, t) -> datetime:
     return datetime.combine(d, t)
 
 
-# ------------------------------------------------------------------ ısıtma (yan çubuk)
-def isinma_paneli():
+def md_sade(metin: str) -> str:
+    """Kaçışlı güvenli HTML: **kalın** ve satır sonları."""
+    x = escape(metin)
+    x = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", x)
+    return x.replace("\n\n", "<br><br>").replace("\n", "<br>")
+
+
+@st.cache_data(show_spinner=False)
+def _surum() -> str:
+    try:
+        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, timeout=5,
+                              cwd=str(config.ROOT)).stdout.strip() or "—"
+    except Exception:  # noqa: BLE001
+        return "—"
+
+
+# ------------------------------------------------------------------ yan çubuk
+def yan_cubuk():
     ss = st.session_state
-    st.sidebar.subheader("Model durumu")
-    if ss.isinma is None:
-        with st.sidebar, st.spinner("Modeller ısıtılıyor…"):
-            ss.isinma = model.isit()
-    if st.sidebar.button("Modeli yeniden ısıt"):
-        with st.sidebar, st.spinner("Modeller ısıtılıyor…"):
-            ss.isinma = model.isit()
-    i = ss.isinma
-    if i["durum"] == "hazir":
-        st.sidebar.success(f"{i['ayrinti']} ({B.sure_yaz(i['sure_sn'])})")
-    else:
-        st.sidebar.error(i["ayrinti"])
-    st.sidebar.caption("Model: CPU üzerinde çalışır; bir talep yaklaşık 15–100 sn sürebilir.")
+    sb = st.sidebar
+    with sb:
+        S.html('<div class="panel-baslik">SLA Operasyon Paneli</div>'
+               '<div class="panel-alt">Poyraz Bulut Yazılım A.Ş. · kurgusal prototip</div>')
+        if ss.isinma is None:
+            with st.spinner("Modeller ısıtılıyor…"):
+                ss.isinma = model.isit()
+        i = ss.isinma
+        if i["durum"] == "hazir":
+            S.html(f'<div class="yan-kutu"><b>Model durumu: hazır</b><br>{S.kac(i["ayrinti"])} ({B.sure_yaz(i["sure_sn"])})</div>')
+        else:
+            S.html(f'<div class="yan-kutu"><b>Model durumu: hazır değil</b><br>{S.kac(i["ayrinti"])}</div>')
+        if st.button("Modeli ısıt", use_container_width=True):
+            with st.spinner("Modeller ısıtılıyor…"):
+                ss.isinma = model.isit()
+            st.rerun()
+        ss.bekleyen_yer = st.empty()
+        S.html(f'<div class="yan-kutu"><b>Model:</b> {S.kac(config.CHAT_MODEL)} (think kapalı)<br>'
+               f'<b>Embedding:</b> {S.kac(config.EMBED_MODEL)}<br><b>Sürüm:</b> {S.kac(_surum())}</div>')
+        st.caption("Model CPU'da çalışır; bir talep yaklaşık 15–100 sn sürer.")
 
 
-# ------------------------------------------------------------------ Talep İşle
+def bekleyen_sayisi_yaz():
+    """Yan çubuktaki bekleyen onay sayısı (sayfa sonunda, güncel durumla)."""
+    try:
+        n = len(B.bekleyen_onaylar(ajan.graf()))
+    except Exception:  # noqa: BLE001
+        n = "?"
+    st.session_state.bekleyen_yer.markdown(
+        f'<div class="yan-kutu"><b>Bekleyen onay</b><br><span class="yan-sayi">{n}</span></div>', unsafe_allow_html=True)
+
+
+# ------------------------------------------------------------------ Talep İşle: form
 def _ornek_sec():
     ss = st.session_state
     ad = ss.get("ornek_ad")
-    simdi = _birlestir(ss.simdi_d, ss.simdi_t)
     if ad and ad != "—":
-        o = B.ornekler(simdi)[ad]
+        o = B.ornekler(_birlestir(ss.simdi_d, ss.simdi_t))[ad]
         ss.talep_metni = o["metin"]
+        ss.soru_soruldu = o["soru_soruldu"]
         ss.kayit_d, ss.kayit_t = o["kayit_zamani"].date(), o["kayit_zamani"].time().replace(microsecond=0, second=0)
 
 
@@ -64,33 +100,37 @@ def _simdiyi_guncelle():
     st.session_state.simdi_d, st.session_state.simdi_t = n.date(), n.time()
 
 
-def talep_formu() -> tuple[str, datetime, datetime] | None:
+def talep_formu() -> tuple[str, datetime, datetime, bool] | None:
     ss = st.session_state
     if "simdi_d" not in ss:
         _simdiyi_guncelle()
         ss.kayit_d, ss.kayit_t = ss.simdi_d, ss.simdi_t
     ss.setdefault("talep_metni", "")
+    ss.setdefault("soru_soruldu", False)
     st.selectbox("Hazır örnek", ["—"] + list(B.ornekler(datetime.now())), key="ornek_ad", on_change=_ornek_sec)
-    st.text_area("Talep metni", key="talep_metni", height=130)
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("**Kayıt zamanı** (talebin açıldığı an)")
-        st.date_input("Kayıt tarihi", key="kayit_d")
-        st.time_input("Kayıt saati", key="kayit_t")
-    with c2:
-        st.markdown("**Şimdi** (değerlendirme anı)")
-        st.date_input("Şimdi tarihi", key="simdi_d")
-        st.time_input("Şimdi saati", key="simdi_t")
-        st.button("Şimdi'yi sistem saatine ayarla", on_click=_simdiyi_guncelle)
-    if st.button("İşle", type="primary"):
+    st.text_area("Talep metni", key="talep_metni", height=110)
+    basildi = st.button("İşle", type="primary")
+    with st.expander("Gelişmiş ayarlar"):
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**Kayıt zamanı** (talebin açıldığı an)")
+            st.date_input("Kayıt tarihi", key="kayit_d")
+            st.time_input("Kayıt saati", key="kayit_t")
+        with c2:
+            st.markdown("**Şimdi** (değerlendirme anı)")
+            st.date_input("Şimdi tarihi", key="simdi_d")
+            st.time_input("Şimdi saati", key="simdi_t")
+            st.button("Şimdi'yi sistem saatine ayarla", on_click=_simdiyi_guncelle)
+        st.checkbox("Bu talepte müşteriye daha önce soru soruldu (ikinci tur)", key="soru_soruldu")
+    if basildi:
         if not ss.talep_metni.strip():
             st.warning("Lütfen bir talep metni yazın.")
             return None
-        return ss.talep_metni, _birlestir(ss.kayit_d, ss.kayit_t), _birlestir(ss.simdi_d, ss.simdi_t)
+        return ss.talep_metni, _birlestir(ss.kayit_d, ss.kayit_t), _birlestir(ss.simdi_d, ss.simdi_t), bool(ss.soru_soruldu)
     return None
 
 
-def isle_canli(metin: str, kayit: datetime, simdi: datetime):
+def isle_canli(metin: str, kayit: datetime, simdi: datetime, soru_soruldu: bool = False):
     """Ajanı ayrı thread'de çalıştırır; ana thread checkpointer'dan adım durumunu okuyup canlı gösterir."""
     ss = st.session_state
     ss.sayac += 1
@@ -101,7 +141,7 @@ def isle_canli(metin: str, kayit: datetime, simdi: datetime):
 
     def hedef():
         try:
-            kutu["sonuc"] = ajan.talep_isle(metin, kayit, simdi, tid)
+            kutu["sonuc"] = ajan.talep_isle(metin, kayit, simdi, tid, soru_soruldu=soru_soruldu)
         except Exception as e:  # noqa: BLE001  (arayüz çökmesin)
             kutu["istisna"] = e
 
@@ -116,8 +156,9 @@ def isle_canli(metin: str, kayit: datetime, simdi: datetime):
         except Exception:  # noqa: BLE001
             satirlar = []
         with yer.container():
-            st.markdown(f"**İşleniyor…** geçen süre {B.sure_yaz(time.perf_counter() - t0)}")
-            st.markdown(B.adim_metni(satirlar))
+            S.html(f'<div class="sonuc-baslik"><span class="ba">İşleniyor…</span>'
+                   f'<span class="teknik">geçen süre {B.sure_yaz(time.perf_counter() - t0)}</span></div>'
+                   + S.zaman_cizgisi(satirlar))
         time.sleep(0.5)
     th.join()
     yer.empty()
@@ -131,15 +172,23 @@ def isle_canli(metin: str, kayit: datetime, simdi: datetime):
         ss.son = {**kutu["sonuc"], "talep": metin, "toplam_sn": toplam}
 
 
-def sonuc_goster(s: dict):
-    """Bir talebin sonucu: adım tablosu, durum kartı veya HESAPLA ayrıntıları, ham JSON."""
+# ------------------------------------------------------------------ sonuç kartı (canlı ve kayıtlı ortak)
+def sonuc_goster(s: dict, kayit: dict | None = None):
+    """Bir talebin sonucu. `kayit` verilirse 'önceden çalıştırılmış kayıt' etiketi gösterilir (asla canlı gibi görünmez)."""
     c = s.get("cikti")
-    st.markdown(f"#### Sonuç — durum: `{s['durum']}`  ·  toplam {B.sure_yaz(s.get('toplam_sn'))}")
-    with st.expander("Adımlar ve süreler", expanded=True):
-        st.markdown(B.adim_metni(B.adim_satirlari(s.get("adim_sureleri", []))))
+    d = (c or {}).get("davranis")
+    if kayit:
+        S.html(f'<div class="kayitli">Önceden çalıştırılmış kayıt, canlı değil · kayıt tarihi: {S.kac(kayit["kayit_tarihi"])}</div>')
+    S.html('<div class="sonuc-baslik">' + S.davranis_rozeti(d) + f'<span class="ba">{S.kac(B.davranis_basligi(c, s["durum"]))}</span>'
+           f'<span class="teknik">teknik durum: {S.kac(s["durum"])} · toplam {S.kac(B.sure_yaz(s.get("toplam_sn")))}</span></div>')
+    with st.expander("Adım zaman çizgisi", expanded=True):
+        S.html(S.zaman_cizgisi(B.adim_satirlari(s.get("adim_sureleri", []))))
     kart = B.durum_karti(c, s.get("hata"), (st.session_state.get("isinma") or {}).get("durum") == "hata")
     if kart:
-        (st.error if kart[0] == "hata" else st.info)(kart[1])
+        if kart[0] == "hata":
+            S.html(f'<div class="hatakart">{md_sade(kart[1])}</div>')
+        else:
+            S.html(f'<div class="sakin">{md_sade(kart[1])}</div>')
         if c and c.get("davranis") and c.get("musteri"):
             st.caption(f"Bulunan müşteri: {c['musteri']}")
     else:
@@ -148,71 +197,89 @@ def sonuc_goster(s: dict):
         with st.expander("Ham JSON (KararCiktisi)"):
             st.json(c)
     if s.get("onay_sonucu"):
-        _onay_sonrasi_goster(s)
+        _karar_karti(s["onay_sonucu"])
 
 
 def _hesapla_goster(c: dict):
-    st.markdown(f"**Davranış:** {c['davranis']}")
-    a, b, d = st.columns(3)
-    a.metric("Müşteri", c["musteri"])
-    b.metric("Paket", c["paket"])
-    d.metric("Öncelik", c["oncelik"])
-    e, f, g = st.columns(3)
-    e.metric("İlk yanıt son tarihi", B.tarih_yaz(c["son_tarih"]))
-    f.metric("Kalan süre", B.kalan_sure_yaz(c.get("kalan_dk")))
-    g.metric("Risk", c["risk"])
     k = c.get("kredi") or {}
-    st.markdown(f"**Kredi:** %{k.get('yuzde', 0):g} ({k.get('tutar', 0):g} TL) — {k.get('neden', '—')}")
-    st.markdown(f"**Onay:** {'gerekli' if c['onay_gerekli'] else 'gerekmiyor'}"
-                + (f" — nedenler: {B.onay_nedenleri_yaz(c['onay_nedenleri'])}" if c["onay_gerekli"] else ""))
-    st.markdown("**Gerekçe / özet:** " + c["mesaj"])
-    st.markdown("**Kaynak maddeler**")
-    for k in B.kaynak_listesi(c["kaynaklar"]):
-        st.markdown(f"- **{k['dokuman']}, Madde {k['madde']}** — {k['metin']}")
+    kredi_de = f"%{k.get('yuzde', 0):g} · {k.get('tutar', 0):,.0f} TL".replace(",", ".")
+    S.html(S.kartlar([
+        S.kart("Müşteri", S.kac(c["musteri"]), genis=True),
+        S.kart("Paket", S.kac(str(c["paket"]).capitalize()))]))
+    S.html(S.kartlar([
+        S.kart("Öncelik", S.oncelik_rozeti(c["oncelik"])),
+        S.kart("Kalan süre", S.kac(B.kalan_sure_yaz(c.get("kalan_dk"))), alt=f"Son tarih {B.tarih_yaz(c['son_tarih'])}"),
+        S.kart("Risk", S.risk_rozeti(c["risk"])),
+        S.kart("Kredi önerisi", S.kac(kredi_de), alt=B.KREDI_NEDEN.get(k.get("neden"), k.get("neden", "")))]))
+    onay = ("gerekli: " + B.onay_nedenleri_yaz(c["onay_nedenleri"])) if c["onay_gerekli"] else "gerekmiyor"
+    S.html(f'<div style="font-size:1rem;color:#14213d"><b>Onay:</b> {S.kac(onay)}</div>')
+    S.html(f'<p style="margin:.6rem 0"><b>Gerekçe / özet:</b> {S.kac(c["mesaj"])}</p>')
+    _kaynaklar_goster(c["kaynaklar"])
 
 
-def _onay_sonrasi_goster(s: dict):
-    o = s["onay_sonucu"]
-    st.success(B.onay_sonucu_ozet(o))
+def _kaynak_html(k: dict) -> str:
+    satirlar = "<br>".join(md_sade(x) for x in k["satirlar"])
+    baslik = f" — {S.kac(k['baslik'])}" if k["baslik"] else ""
+    return (f'<div class="kaynak"><div class="kb">Madde {S.kac(k["madde"])}{baslik}</div>'
+            f'<div class="kd">{S.kac(k["dokuman"])}</div><div>{satirlar}</div></div>')
+
+
+def _kaynaklar_goster(kaynaklar: list[dict]):
+    ana, diger = B.kaynaklari_grupla(B.kaynak_listesi(kaynaklar))
+    st.markdown("#### Kaynak maddeler")
+    if ana:
+        S.html("".join(_kaynak_html(k) for k in ana))
+    for grup, liste in diger.items():
+        with st.expander(f"{grup} ({len(liste)} madde)"):
+            S.html("".join(_kaynak_html(k) for k in liste))
+
+
+def _karar_karti(o: dict):
+    red = o.get("karar") != "ONAYLA"
     islemler = B.uygulanan_islemler(o)
-    st.markdown("**Onaydan sonra yapılan işler**")
-    if islemler:
-        for i in islemler:
-            st.markdown(f"- {i}")
-    else:
-        st.markdown("- Ajan hiçbir işlem uygulamadı (reddedildi ya da uygulanacak işlem yok).")
-    st.caption("Onay paketinin durum alanı BEKLEMEDE kalır; sonuç `onay_sonucu` alanındadır (karar/uygulandı).")
+    liste = ("<ul>" + "".join(f"<li>{S.kac(i)}</li>" for i in islemler) + "</ul>") if islemler else \
+        "<div>Ajan hiçbir işlem uygulamadı.</div>"
+    gerekce = f'<div>Gerekçe: {S.kac(o["gerekce"])}</div>' if o.get("gerekce") else ""
+    S.html(f'<div class="karar-karti{" red" if red else ""}"><div class="ba">Karar: {"Reddedildi" if red else "Onaylandı"}</div>'
+           f'{gerekce}<div style="margin-top:.5rem"><b>Onaydan sonra yapılan işler</b></div>{liste}</div>')
+    with st.expander("Ayrıntı"):
+        st.caption("Onay paketinin durum alanı BEKLEMEDE kalır; sonuç `onay_sonucu` alanındadır (karar, gerekçe, uygulanan işlemler).")
+        st.json(o)
 
 
 # ------------------------------------------------------------------ Onay
 def onay_paneli(tid: str, paket: dict, anahtar: str):
     """Onay paketi özeti + Onayla/Reddet. Reddet için gerekçe zorunludur (kuralı ajan uygular; boşsa ajanın hatası gösterilir)."""
     ss = st.session_state
-    st.markdown(f"**Onay bekleyen paket** (`{tid}`)")
-    st.markdown(f"{paket['musteri']} ({paket['paket']}) · öncelik {paket['oncelik']} · risk {paket['risk']} · "
-                f"son tarih {B.tarih_yaz(paket['son_tarih'])} · kalan {B.kalan_sure_yaz(paket.get('kalan_dk'))}")
-    k = paket.get("kredi") or {}
-    st.markdown(f"Kredi önerisi: %{k.get('yuzde', 0):g} ({k.get('tutar', 0):g} TL) · onay nedenleri: "
-                f"{B.onay_nedenleri_yaz(paket['onay_nedenleri'])}")
-    st.caption(paket["mesaj"])
-    gerekce = st.text_input("Gerekçe (Reddet için zorunlu)", key=f"gerekce_{anahtar}")
-    c1, c2 = st.columns(2)
-    karar = "ONAYLA" if c1.button("Onayla", key=f"onayla_{anahtar}") else ("REDDET" if c2.button("Reddet", key=f"reddet_{anahtar}") else None)
-    if karar:
-        try:
-            r = ajan.onay_ver(tid, karar, gerekce)
-        except ValueError as e:                        # ajanın kendi engeli (ör. gerekçesiz red) olduğu gibi gösterilir
-            ss.onay_hatasi[tid] = str(e)
-        except Exception as e:  # noqa: BLE001
-            ss.onay_hatasi[tid] = B.hata_mesaji({"mesaj": f"{type(e).__name__}: {e}"})
-        else:
-            ss.onay_hatasi.pop(tid, None)
-            ss.onaylananlar[tid] = r
-            if ss.son and ss.son["thread_id"] == tid:
-                ss.son = {**r, "talep": ss.son["talep"], "toplam_sn": ss.son.get("toplam_sn")}
-            st.rerun()
-    if tid in ss.onay_hatasi:
-        st.error(ss.onay_hatasi[tid])
+    with st.container(key="onay_karti" if anahtar == "son" else f"onay_karti_{anahtar}"):
+        st.markdown("### Yönetici onayı gerekiyor")
+        k = paket.get("kredi") or {}
+        S.html(S.kartlar([
+            S.kart("Müşteri", S.kac(paket["musteri"]), alt=f"Paket: {paket['paket']}", genis=True),
+            S.kart("Öncelik / risk", S.oncelik_rozeti(paket["oncelik"]) + " " + S.risk_rozeti(paket["risk"])),
+            S.kart("Kredi önerisi", S.kac(f"%{k.get('yuzde', 0):g} · {k.get('tutar', 0):,.0f} TL".replace(",", ".")))]))
+        st.markdown(f"**Onay nedenleri:** {B.onay_nedenleri_yaz(paket['onay_nedenleri'])} · "
+                    f"**Son tarih:** {B.tarih_yaz(paket['son_tarih'])} · **Kalan:** {B.kalan_sure_yaz(paket.get('kalan_dk'))}")
+        st.caption(paket["mesaj"] + f"  (talep: {tid})")
+        gerekce = st.text_input("Gerekçe (Reddet için zorunlu)", key=f"gerekce_{anahtar}")
+        c1, c2 = st.columns(2)
+        karar = "ONAYLA" if c1.button("Onayla", key=f"onayla_{anahtar}", type="primary") else \
+            ("REDDET" if c2.button("Reddet", key=f"reddet_{anahtar}") else None)
+        if karar:
+            try:
+                r = ajan.onay_ver(tid, karar, gerekce)
+            except ValueError as e:                    # ajanın kendi engeli (ör. gerekçesiz red) olduğu gibi gösterilir
+                ss.onay_hatasi[tid] = str(e)
+            except Exception as e:  # noqa: BLE001
+                ss.onay_hatasi[tid] = B.hata_mesaji({"mesaj": f"{type(e).__name__}: {e}"})
+            else:
+                ss.onay_hatasi.pop(tid, None)
+                ss.onaylananlar[tid] = r
+                if ss.son and ss.son["thread_id"] == tid:
+                    ss.son = {**r, "talep": ss.son["talep"], "toplam_sn": ss.son.get("toplam_sn")}
+                st.rerun()
+        if tid in ss.onay_hatasi:
+            st.error(ss.onay_hatasi[tid])
 
 
 def bekleyen_onaylar_paneli(haric: str | None = None):
@@ -238,11 +305,9 @@ def talep_sekmesi():
     if girdi:
         isle_canli(*girdi)
     if ss.son:
-        st.divider()
         st.markdown(f"**Talep:** {ss.son['talep']}")
         sonuc_goster(ss.son)
         if ss.son["durum"] == "BEKLEMEDE" and ss.son.get("cikti"):
-            st.divider()
             onay_paneli(ss.son["thread_id"], ss.son["cikti"], "son")
     st.divider()
     bekleyen_onaylar_paneli(haric=ss.son["thread_id"] if ss.son and ss.son["durum"] == "BEKLEMEDE" else None)
@@ -259,26 +324,32 @@ def olcum_sekmesi():
     ilk, sonra = r["ilk"], r["sonra"]
     st.caption(f"İlk koşu: commit {ilk['meta']['commit'][:8]}, {ilk['meta']['tarih']} · Düzeltme sonrası: commit "
                f"{sonra['meta']['commit'][:8]}, {sonra['meta']['tarih']} · model {sonra['meta']['chat_model']}")
-    st.subheader("Doğruluk: ilk koşu → düzeltme sonrası (kaç/N)")
-    satirlar = []
-    for ad in ("Ana set", "Zor set", "Bağımsız 15"):
-        satirlar.append({"Küme": ad, "Tam doğru": f"{olcum.kn(*ilk['tam'][ad])} → {olcum.kn(*sonra['tam'][ad])}",
-                         "Davranış doğru": f"{olcum.kn(*ilk['dav'][ad])} → {olcum.kn(*sonra['dav'][ad])}"})
-    st.table(satirlar)
-    a, b, c = st.columns(3)
-    a.metric("Onay yakalama", f"{olcum.kn(*ilk['onay_yakalama'])} → {olcum.kn(*sonra['onay_yakalama'])}")
-    b.metric("Yanlış alarm", f"{olcum.kn(*ilk['yanlis_alarm'])} → {olcum.kn(*sonra['yanlis_alarm'])}")
-    c.metric("Ortalama gecikme (talep başı)", f"{ilk['gecikme_ort']} → {sonra['gecikme_ort']} sn")
+    st.subheader("Tam doğru: ilk koşu → düzeltme sonrası (kaç/N)")
+    kartlar = [S.kart(ad, S.kac(f"{olcum.kn(*ilk['tam'][ad])} → {olcum.kn(*sonra['tam'][ad])}"),
+                      alt=f"Davranış doğru: {olcum.kn(*ilk['dav'][ad])} → {olcum.kn(*sonra['dav'][ad])}")
+               for ad in ("Ana set", "Zor set", "Bağımsız 15")]
+    S.html(S.kartlar(kartlar))
+    S.html(S.kartlar([
+        S.kart("Onay yakalama", S.kac(f"{olcum.kn(*ilk['onay_yakalama'])} → {olcum.kn(*sonra['onay_yakalama'])}"),
+               alt="onay gerekenlerde onay istendi"),
+        S.kart("Yanlış alarm", S.kac(f"{olcum.kn(*ilk['yanlis_alarm'])} → {olcum.kn(*sonra['yanlis_alarm'])}"),
+               alt="onay gerekmezken onay istendi"),
+        S.kart("Ortalama gecikme", S.kac(f"{ilk['gecikme_ort']} → {sonra['gecikme_ort']} sn"), alt="talep başına")]))
     st.caption(f"Kesinti şüpheli talepler hariç ortalama: {ilk['gecikme_ort_supheli_haric']} → {sonra['gecikme_ort_supheli_haric']} sn "
                f"(işaretlenenler: ilk {', '.join(ilk['supheli']) or '—'}; sonra {', '.join(sonra['supheli']) or '—'}). "
                "Süre, CPU'da çalışan küçük modelin ve o anki makine yükünün ürünüdür.")
+    import pandas as pd
+    kume = ("Ana set", "Zor set", "Bağımsız 15")
+    st.markdown("**Tam doğru talep sayısı** (küme büyüklükleri: " + ", ".join(f"{k}: {ilk['tam'][k][1]}" for k in kume) + ")")
+    st.bar_chart(pd.DataFrame({"İlk koşu": [ilk["tam"][k][0] for k in kume], "Düzeltme sonrası": [sonra["tam"][k][0] for k in kume]},
+                              index=list(kume)), color=["#9aa8bd", S.VURGU], stack=False)
     st.subheader("Hata türleri (hatalı talep sayısı, adım bazında)")
-    satir = []
-    for ad in ("Ana set", "Zor set"):
-        for adim in sorted(set(ilk["hata_turleri"][ad]) | set(sonra["hata_turleri"][ad])):
-            satir.append({"Küme": ad, "Hata adımı": adim, "İlk koşu": ilk["hata_turleri"][ad].get(adim, 0),
-                          "Düzeltme sonrası": sonra["hata_turleri"][ad].get(adim, 0)})
-    st.table(satir)
+    adimlar = sorted({a for k in ("Ana set", "Zor set") for a in set(ilk["hata_turleri"][k]) | set(sonra["hata_turleri"][k])})
+    if adimlar:
+        st.bar_chart(pd.DataFrame(
+            {"İlk koşu": [sum(ilk["hata_turleri"][k].get(a, 0) for k in ("Ana set", "Zor set")) for a in adimlar],
+             "Düzeltme sonrası": [sum(sonra["hata_turleri"][k].get(a, 0) for k in ("Ana set", "Zor set")) for a in adimlar]},
+            index=adimlar), color=["#9aa8bd", S.VURGU], stack=False)
     st.subheader("Talep bazında değişim")
     st.markdown(f"- **Düzeldi ({len(r['duzeldi'])}):** {', '.join(r['duzeldi']) or '—'}\n"
                 f"- **Bozuldu — yeni regresyon ({len(r['bozuldu'])}):** {', '.join(r['bozuldu']) or '—'}\n"
@@ -314,9 +385,27 @@ SINIRLAMALAR = [
 ]
 
 
+def akis_html(adimlar=ADIMLAR) -> str:
+    """Model adımları (teal) ile kod adımları (gri) farklı renkte akış şeması; saf HTML/CSS."""
+    parca = []
+    for i, (ad, tur, aciklama) in enumerate(adimlar):
+        sinif = "model" if tur.startswith("model") else "kod"
+        etiket = "MODEL" if sinif == "model" else "KOD"
+        parca.append(f'<div class="dugum {sinif}"><b>{S.kac(ad)}</b><span class="etiket {sinif}">{etiket}</span>'
+                     f'<div style="font-size:.8rem;margin-top:.25rem">{S.kac(aciklama)}</div></div>')
+        if i < len(adimlar) - 1:
+            parca.append('<div class="ok">→</div>')
+    return '<div class="akis">' + "".join(parca) + "</div>"
+
+
 def mimari_sekmesi():
-    st.subheader("Adımlar (hangisi model, hangisi kod)")
-    st.table([{"Adım": a, "Tür": t, "Açıklama": x} for a, t, x in ADIMLAR])
+    st.subheader("Akış: hangi adım model, hangisi kod")
+    S.html('<div class="lejant"><span><span class="etiket model">MODEL</span> dil modeli çağrısı</span>'
+           '<span><span class="etiket kod">KOD</span> deterministik kod</span></div>')
+    S.html(akis_html())
+    st.markdown("**Çıkışlar:** " + " ".join(S.davranis_rozeti(d) for d in
+                                           ("ENGELLE", "BILMIYORUM", "SORU_SOR", "ONCELIK_BELIRLENEMEDI", "HESAPLA")),
+                unsafe_allow_html=True)
     st.subheader("Karar sırası özeti")
     st.markdown("1. Komut içeren talep **işlenmez** (ENGELLE).\n"
                 "2. Müşteri bulunamazsa/belirsizse **sorulur**; kayıtsız firma, kapsam dışı ya da dokümanda olmayan konu için "
@@ -330,16 +419,40 @@ def mimari_sekmesi():
     st.caption(f"Model: {config.CHAT_MODEL} (think kapalı) · Embedding: {config.EMBED_MODEL}")
 
 
+# ------------------------------------------------------------------ Kayıtlı çalıştırmalar
+def kayitli_sekmesi():
+    st.markdown("Demo örnekleriyle gerçek modelde **önceden** çalıştırılmış sonuçlar. Bunlar canlı değildir; "
+                "ağ/model sorunu olursa yedek olarak gösterilebilir.")
+    try:
+        kayitlar = kayitli.yukle()
+    except Exception as e:  # noqa: BLE001
+        st.error(f"Kayıtlı sonuçlar okunamadı: {type(e).__name__}: {e}")
+        return
+    if not kayitlar:
+        st.warning("Kayıtlı sonuç bulunamadı (demo/kayitli_sonuclar.json). `python demo/kayit_al.py` ile oluşturulur.")
+        return
+    ad = st.selectbox("Kayıt", [k["ad"] for k in kayitlar], key="kayit_sec")
+    k = next(x for x in kayitlar if x["ad"] == ad)
+    st.markdown(f"**Talep:** {k['metin']}")
+    sonuc_goster({**k["sonuc"], "talep": k["metin"], "toplam_sn": k["sonuc"].get("toplam_sn")}, kayit=k)
+    if k["sonuc"]["durum"] == "BEKLEMEDE":
+        st.caption("Kayıtta yönetici kararı verilmedi; canlı çalıştırmada onay paneli burada görünür.")
+
+
 def sayfa():
-    st.set_page_config(page_title="SLA Uyum ve Eskalasyon Ajanı", layout="wide")
+    st.set_page_config(page_title="SLA Operasyon Paneli", layout="wide")
+    S.uygula()
     _durum_baslat()
+    yan_cubuk()
     st.title("SLA Uyum ve Eskalasyon Ajanı")
     st.caption("Poyraz Bulut Yazılım A.Ş. (kurgusal) — prototip. Veri sentetiktir.")
-    isinma_paneli()
-    t1, t2, t3 = st.tabs(["Talep İşle", "Ölçüm Sonuçları", "Mimari ve Sınırlamalar"])
+    t1, t2, t3, t4 = st.tabs(SEKMELER)
     with t1:
         talep_sekmesi()
     with t2:
         olcum_sekmesi()
     with t3:
         mimari_sekmesi()
+    with t4:
+        kayitli_sekmesi()
+    bekleyen_sayisi_yaz()

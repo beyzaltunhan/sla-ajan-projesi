@@ -48,9 +48,8 @@ def test_hata_mesajlari():
 
 
 def test_kaynak_listesi_metni_dokumandan_gelir():
-    r = B.kaynak_listesi([{"dokuman": "02_oncelik_rehberi", "madde": "4.1"}, {"dokuman": "01_sla_sozlesmesi", "madde": "3.1"}], uzunluk=60)
-    assert r[0]["dokuman"].startswith("Doküman 02") and r[0]["madde"] == "4.1" and r[0]["metin"]
-    assert len(r[1]["metin"]) <= 61 and r[1]["metin"].endswith("…")
+    r = B.kaynak_listesi([{"dokuman": "02_oncelik_rehberi", "madde": "4.1"}, {"dokuman": "01_sla_sozlesmesi", "madde": "3.1"}])
+    assert r[0]["dokuman"].startswith("Doküman 02") and r[0]["madde"] == "4.1" and r[0]["satirlar"]
     assert B.kaynak_listesi([]) == []
 
 
@@ -71,12 +70,12 @@ def test_thread_id_benzersiz():
 def test_ornekler_ozgun_ve_tutarli():
     simdi = datetime(2026, 11, 23, 10, 0)
     o = B.ornekler(simdi)
-    assert len(o) == 7 and all(v["kayit_zamani"] < simdi for v in o.values())
+    assert len(o) == 8 and all(v["kayit_zamani"] < simdi for v in o.values())
     test = json.loads((config.DATA_DIR / "test_seti.json").read_text(encoding="utf-8"))["talepler"]
     metinler = {t["metin"] if "metin" in t else t.get("talep_metni", "") for t in test}
     assert not any(v["metin"] in metinler for v in o.values())
     musteriler = json.loads((config.DATA_DIR / "musteriler.json").read_text(encoding="utf-8"))["musteriler"]
-    kayitsiz = o["(g) Kayıtsız firma → BILMIYORUM"]["metin"]
+    kayitsiz = o["Kayıtsız firma (BILMIYORUM)"]["metin"]
     assert not any(m["ad"].split()[0].lower() in kayitsiz.lower() for m in musteriler)
 
 
