@@ -113,7 +113,7 @@ def durum_karti(cikti: dict | None, hata: dict | None = None, ollama_hatali: boo
     if d == "BILMIYORUM":
         return "bilgi", f"**{BILMIYORUM_YANITI}**\n\nNeden: {NEDEN_ACIKLAMA.get(cikti.get('neden'), cikti.get('neden'))}"
     if d == "ENGELLE":
-        return "bilgi", f"**Bu talep işlenmedi:** {NEDEN_ACIKLAMA['talimat_iceriyor']}\n\n{cikti['mesaj']}"
+        return "bilgi", f"**Bu talep işlenmedi:** {cikti['mesaj']}"
     if d == "SORU_SOR":
         return "bilgi", f"**Müşteriye sorulacak soru:** {cikti['mesaj']}"
     if d == "ONCELIK_BELIRLENEMEDI":

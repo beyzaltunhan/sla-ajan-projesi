@@ -100,7 +100,7 @@ def test_onay_butonlari_yalniz_onay_kartinda(ortam):
     ortam.yaz(ENGEL, ONAY)
     at = calistir()
     assert {"Onayla", "Reddet"} <= set(etiketler(at)) and not any(b.disabled for b in at.button if b.label in ("Onayla", "Reddet"))
-    assert any("İNSAN kararıdır" in c.value for c in at.caption)
+    assert any("Karar yalnızca yöneticidedir; n8n onay vermez." in c.value for c in at.caption)
 
 
 def test_onayla_servise_gider_ve_karar_karti(ortam):
@@ -146,7 +146,8 @@ def test_servis_kapali_mesaj_ve_pasif_dugmeler(ortam):
     ortam.yaz(ONAY)
     ortam.kur(SahteServis(kapali=True))
     at = calistir()                               # çökmez
-    assert any("Ajan servisi çalışmıyor" in w.value for w in at.warning)
+    assert any("Onay düğmeleri için ajan servisi gerekir." in c.value for c in at.caption)
+    assert not list(at.warning)                   # sarı uyarı yok: sakin gri not
     assert all(b.disabled for b in at.button if b.label in ("Onayla", "Reddet"))
 
 
@@ -157,7 +158,8 @@ def test_servis_kapaliyken_tiklama_cokmez(ortam, monkeypatch):
     s.kapali = True                               # servis sayfa açıldıktan sonra kapandı
     [b for b in at.button if b.label == "Onayla"][0].click()
     at.run()
-    assert not at.exception and any("Ajan servisi çalışmıyor" in w.value for w in list(at.warning) + list(at.error))
+    assert not at.exception and any("ajan servisi gerekir" in c.value for c in at.caption)
+    assert all(b.disabled for b in at.button if b.label in ("Onayla", "Reddet"))
 
 
 def test_zaten_karara_baglanmis_pasif_ve_durum(ortam):
@@ -260,14 +262,14 @@ def test_dis_katman_semasi():
 
 
 def test_sinirlamalar_guncel():
-    m = " ".join(bilesenler.SINIRLAMALAR)
+    m = " ".join(bilesenler.SINIRLAMALAR + bilesenler.SINIRLAMA_AYRINTI)
     assert "sentetik simülatör" in m and "Zendesk/Jira/e-posta/Slack" in m and "iki dalla" in m
     assert "gelecek çalışma" not in m and "Onaydan sonraki işlemler" in m
 
 
 def test_css_ust_serit_cilasi():
     from arayuz import stil
-    assert 'header[data-testid="stHeader"]' in stil.CSS and "box-shadow: none" in stil.CSS and "padding-top: 4rem" in stil.CSS
+    assert 'header[data-testid="stHeader"]' in stil.CSS and "box-shadow: none" in stil.CSS and "padding-top: 3.2rem" in stil.CSS
 
 
 def test_tam_sayfa_acilir_bes_sekme_ve_talep_ise_bozulmadi(monkeypatch, tmp_path):
@@ -276,7 +278,7 @@ def test_tam_sayfa_acilir_bes_sekme_ve_talep_ise_bozulmadi(monkeypatch, tmp_path
     at = AppTest.from_file(str(olcum.KOK / "arayuz" / "uygulama.py"), default_timeout=30)
     at.run()
     assert not at.exception
-    assert [t.label for t in at.tabs] == ["Talep İşle", "Bildirimler", "Ölçüm Sonuçları", "Mimari ve Sınırlamalar", "Kayıtlı Çalıştırmalar"]
+    assert [t.label for t in at.tabs] == ["Talep İşle", "Ölçüm Sonuçları", "Mimari ve Sınırlamalar", "Bildirimler", "Kayıtlı Çalıştırmalar"]
     o = at.selectbox(key="ornek_ad")
     assert o.options[1] == "Demo 1: Komutlu talep" and o.options[2] == "Demo 2: İhlalli P2 talep"
     o.select(o.options[2]).run()

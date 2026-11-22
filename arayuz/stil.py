@@ -15,7 +15,8 @@ CSS = f"""
 header[data-testid="stHeader"] {{ background: #f5f7fa; box-shadow: none; border-bottom: 0; }}
 header[data-testid="stHeader"]::before, header[data-testid="stHeader"]::after {{ display: none; }}
 [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ border: 0; }}
-.block-container {{ padding-top: 4rem; max-width: 1180px; }}
+.block-container {{ padding-top: 3.2rem; max-width: 1180px; }}
+.block-container h1 {{ padding-top: 0; margin-top: 0; }}
 div[data-baseweb="tab-list"] {{ background: #f5f7fa; padding-top: .35rem; }}
 button[data-baseweb="tab"] {{ height: auto; min-height: 2.6rem; padding-top: .45rem; padding-bottom: .45rem; overflow: visible; }}
 h1, h2, h3, h4 {{ color: {LACIVERT}; letter-spacing: -0.01em; }}
@@ -89,6 +90,13 @@ section[data-testid="stSidebar"] * {{ white-space: normal; overflow-wrap: anywhe
 .bildirim .zaman-sag {{ margin-left: auto; }}
 .bildirim .bb {{ font-weight: 700; font-size: 1.1rem; color: {LACIVERT}; }}
 .bildirim .bm {{ margin: .2rem 0 .3rem 0; }}
+.kpi {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: .6rem 0 .5rem 0; align-items: stretch; }}
+.kpi .kart {{ display: flex; flex-direction: column; justify-content: flex-start; min-height: 5.6rem; padding: .6rem .8rem; }}
+.kpi .kart .et {{ font-size: .72rem; }}
+.kpi .kart .de {{ font-size: 1.15rem; }}
+.kpi .kart .al {{ font-size: .75rem; }}
+.silik {{ font-size: .78rem; color: #8592a8; margin-top: .25rem; }}
+.sade-not {{ font-size: .85rem; color: #5b6b86; background: #f0f3f8; border-radius: 8px; padding: .4rem .7rem; margin: .3rem 0; }}
 </style>
 """
 
@@ -138,6 +146,11 @@ def kart(etiket: str, deger_html: str, alt: str = "", genis: bool = False) -> st
 
 def kartlar(kartlar_html: list[str]) -> str:
     return '<div class="kartlar">' + "".join(kartlar_html) + "</div>"
+
+
+def kpi_seridi(kartlar_html: list[str]) -> str:
+    """Eşit genişlik ve yükseklikte küçük kart şeridi (Öncelik · Kalan süre · Risk · Kredi · Onay durumu)."""
+    return '<div class="kpi">' + "".join(kartlar_html) + "</div>"
 
 
 def zaman_cizgisi(satirlar: list[dict]) -> str:
