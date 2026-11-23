@@ -1,7 +1,6 @@
 # SLA Uyum ve Eskalasyon Ajanı (prototip)
 
 BTK Akademi Yapay Zekâ Çözümleri Geliştirme Kariyer Atölyesi bitirme projesi (Entertech ekosistemi).
-Hazırlayan: Beyza Altunhan.
 
 ## Ne bu?
 
@@ -13,7 +12,7 @@ ve gecikme riskini hesaplar, gerekiyorsa **yöneticiden onay ister**. Onayı yal
 - Model bilgisayarınızda (Ollama, CPU) çalışır.
 - Bu bir **prototiptir**: gerçek e-posta, Slack veya destek sistemine bağlı değildir (bkz. [Sınırlamalar](#sınırlamalar)).
 
-**Neden?** SLA'lı hizmet veren yazılım firmalarının destek ekipleri öncelik, süre ve kredi hesabını elle yapıyor; bu iş hataya ve gecikmeye açıktır.
+**Neden?** SLA'lı hizmet veren yazılım firmalarının destek ekipleri öncelik, süre ve kredi hesabını çoğu zaman elle yapabilir; bu iş hataya ve gecikmeye açıktır.
 Bu senaryo "makul bir kurumsal senaryo"dur; gerçek bir firmadaki sorunun kanıtı olarak sunulmaz (bkz. [VERI_KARTI.md](VERI_KARTI.md)).
 
 **Tek bakışta mimari**
