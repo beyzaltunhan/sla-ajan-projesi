@@ -1,5 +1,8 @@
 # SLA Uyum ve Eskalasyon Ajanı (prototip)
 
+BTK Akademi Yapay Zekâ Çözümleri Geliştirme Kariyer Atölyesi bitirme projesi (Entertech ekosistemi).
+Hazırlayan: Beyza Altunhan.
+
 ## Ne bu?
 
 Bir müşteri destek talebi geldiğinde şunları yapan küçük bir yapay zekâ ajanı: talepte sisteme komut vermeye çalışan bir metin
@@ -9,6 +12,16 @@ ve gecikme riskini hesaplar, gerekiyorsa **yöneticiden onay ister**. Onayı yal
 - Firma (Poyraz Bulut Yazılım A.Ş.), müşteriler, sözleşmeler ve talepler **kurgusaldır**; gerçek veri kullanılmadı.
 - Model bilgisayarınızda (Ollama, CPU) çalışır.
 - Bu bir **prototiptir**: gerçek e-posta, Slack veya destek sistemine bağlı değildir (bkz. [Sınırlamalar](#sınırlamalar)).
+
+**Neden?** SLA'lı hizmet veren yazılım firmalarının destek ekipleri öncelik, süre ve kredi hesabını elle yapıyor; bu iş hataya ve gecikmeye açıktır.
+Bu senaryo "makul bir kurumsal senaryo"dur; gerçek bir firmadaki sorunun kanıtı olarak sunulmaz (bkz. [VERI_KARTI.md](VERI_KARTI.md)).
+
+**Tek bakışta mimari**
+
+- Model yalnızca dar işleri yapar (komut var mı, talep türü, firma adı, öncelik önerisi); süre, risk, kredi ve onay kodda hesaplanır.
+- Her model çıktısı şemayla doğrulanır; şemaya uymazsa bir kez yeniden denenir, olmazsa "işlenemedi" olarak yöneticiye gider.
+- Öncelik kuralı SLA dokümanlarından aramayla bulunur ve madde numarasıyla gösterilir; dokümanda yoksa "bilmiyorum" der.
+- Kritik kararlarda (ihlal, yüksek risk, P1, kredi önerisi) ajan durur ve insan onayı bekler; otomatik onay yoktur.
 
 ## Gereksinimler
 
@@ -54,6 +67,12 @@ Talep başına yaklaşık 10 sn–2 dk sürer.
 Ekran görüntüleri: [Talep İşle](screenshots/ana.png) · [Sonuç](screenshots/sonuc.png) · [Kayıtlı](screenshots/kayitli.png) ·
 [Bildirimler](screenshots/bildirimler.png) · [Mimari](screenshots/mimari.png) · [Ölçüm](screenshots/olcum.png) ·
 [n8n akışı](screenshots/n8n_is_akisi.png)
+
+![Sonuç ekranı](screenshots/sonuc.png)
+
+![Mimari ve sınırlamalar sekmesi](screenshots/mimari.png)
+
+![Ölçüm sonuçları sekmesi](screenshots/olcum.png)
 
 ## Sonuç özeti
 
@@ -121,7 +140,8 @@ Dosya haritası:
 | `demo/` | Sunum yardımcıları: ön kontrol, sıfırlama, kayıtlı sonuçlar |
 | `data/` | Müşteri kayıtları, SLA yapılandırması, 59 talepli test seti |
 | `docs/` | 4 SLA dokümanı (sözleşme, öncelik rehberi, eskalasyon, SSS) |
-| `tasarim/` | Karar sırası ve test seti inceleme notları |
+| `tasarim/` | Karar sırası (`karar_sirasi.md`) ve test seti inceleme notları |
+| `VERI_KARTI.md` | Veri kartı: sentetik veri seti, varsayımlar ve sınırlar |
 | `deneme/` | Geliştirme sırasında kullanılan deneme/ölçüm betikleri |
 | `tests/` | pytest testleri |
 
