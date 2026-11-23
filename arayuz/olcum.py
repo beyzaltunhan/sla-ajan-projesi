@@ -93,6 +93,28 @@ def _kac(metin: str) -> tuple[int, int]:
     return int(a), int(b)
 
 
+def davranis_gecikme(rapor_metni: str | None) -> list[dict]:
+    """duzeltme_sonrasi_rapor.md "Alınan davranışa göre toplam süre (sn)" tablosunu OKUR.
+    Satır: davranis, ilk/sonra = {n, ort, maks} (sayılar rapordan, kodda yazılı değildir)."""
+    if not rapor_metni:
+        return []
+    m = re.search(r"\*\*Alınan davranışa göre toplam süre \(sn\)\*\*(.*?)(?=^\*\*|^##\s|\Z)", rapor_metni, re.S | re.M)
+    if not m:
+        return []
+    sonuc = []
+    for satir in m.group(1).splitlines():
+        h = [x.strip() for x in satir.strip().strip("|").split("|")]
+        if len(h) != 9 or not h[0] or h[0].startswith(("-", "Alınan")):
+            continue
+        try:
+            v = [float(x) for x in h[1:]]
+        except ValueError:
+            continue
+        sonuc.append({"davranis": h[0], "ilk": {"n": int(v[0]), "ort": v[1], "maks": v[3]},
+                      "sonra": {"n": int(v[4]), "ort": v[5], "maks": v[7]}})
+    return sonuc
+
+
 def kaynak_bulma(rapor_metni: str | None) -> list[dict]:
     """duzeltme_sonrasi_rapor.md içindeki "Doğru kaynak maddeyi bulma" tablosunu OKUR (sayılar kodda yazılı değildir).
     Satır: kume, grup, talep, ilk/sonra = {tumu, en_az_biri, madde} (her biri (doğru, N))."""

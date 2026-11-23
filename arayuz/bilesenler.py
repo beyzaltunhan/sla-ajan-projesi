@@ -384,6 +384,12 @@ def olcum_sekmesi():
         S.kart("Yanlış alarm", S.kac(f"{olcum.kn(*ilk['yanlis_alarm'])} → {olcum.kn(*sonra['yanlis_alarm'])}"),
                alt="onay gerekmezken onay istendi"),
         S.kart("Ortalama gecikme", S.kac(f"{G.virgul(ilk['gecikme_ort'])} → {G.virgul(sonra['gecikme_ort'])} sn"), alt="talep başına")]))
+    gec = {x["davranis"]: x for x in olcum.davranis_gecikme(olcum.rapor_oku(olcum.SONRA_RAPOR))}
+    ad_ = (("ENGELLE", "Komut engelleme"), ("HESAPLA", "Hesaplama"), ("BILMIYORUM", "Dokümanda bilgi yok"))
+    parca = [f"{ad} {G.virgul(gec[k]['ilk']['ort'])} → {G.virgul(gec[k]['sonra']['ort'])} sn "
+             f"(en yüksek {G.virgul(gec[k]['ilk']['maks'])} → {G.virgul(gec[k]['sonra']['maks'])})" for k, ad in ad_ if k in gec]
+    if parca:
+        st.caption("Karar türüne göre ortalama gecikme, ilk ölçüm → düzeltme sonrası: " + " · ".join(parca) + ".")
     _kaynak_bulma_kartlari()
     st.subheader("Hata türleri (hatalı talep sayısı, adım bazında)")
     satirlar = G.hata_turu_satirlari(r, olcum.hata_adi)
@@ -412,7 +418,7 @@ def olcum_sekmesi():
 def _kaynak_bulma_kartlari():
     """Doğru kaynak maddeyi bulma: sonuclar/duzeltme_sonrasi_rapor.md içindeki tablodan OKUNUR (sayı kodda yazılı değildir)."""
     satirlar = olcum.kaynak_bulma(olcum.rapor_oku(olcum.SONRA_RAPOR))
-    st.subheader("Doğru kaynak maddeyi bulma (kaç/N)")
+    st.subheader("Doğru kaynak maddeyi bulma: geri çağırma (kaç/N)")
     if not satirlar:
         st.caption("Doğru kaynak bulma tablosu raporda bulunamadı.")
         return
@@ -425,7 +431,8 @@ def _kaynak_bulma_kartlari():
                               alt=f"en az biri {olcum.kn(*i['en_az_biri'])} → {olcum.kn(*y['en_az_biri'])} · madde {olcum.kn(*i['madde'])} → {olcum.kn(*y['madde'])}"))
     S.html(S.kartlar(kartlar, iki_sutun=True))
     st.caption("Tümü: talebin beklenen kaynak maddelerinin hepsi bulundu; en az biri: en az biri bulundu. BILMIYORUM/SORU_SOR/ENGELLE "
-               "kaynak taşımadığı için bu tabloya girmez. Sayılar düzeltme sonrası raporun 8. bölümünden okunur.")
+               "kaynak taşımadığı için bu tabloya girmez. Geri çağırma: beklenen kaynak maddelerinin kaçı bulundu (madde satırı). "
+               "Sayılar düzeltme sonrası raporun 8. bölümünden okunur.")
 
 
 # ------------------------------------------------------------------ Mimari ve Sınırlamalar

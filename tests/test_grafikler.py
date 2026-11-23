@@ -109,3 +109,25 @@ def test_faz21_ornek_adlari():
     assert B.gorunen_ad("Demo 1: Komutlu talep") == "Güvenlik: komut içeren talep"
     assert B.gorunen_ad("Demo 2: İhlalli P2 talep") == "SLA ihlali: onay gerektiren talep"
     assert not any(a.startswith("Demo") for a in B.ornekler(__import__("datetime").datetime.now()))
+
+
+# ---------------- FAZ 2.2
+def test_faz22_davranis_gecikme_rapordan():
+    g = {x["davranis"]: x for x in olcum.davranis_gecikme(olcum.rapor_oku(olcum.SONRA_RAPOR))}
+    assert g["ENGELLE"]["ilk"] == {"n": 6, "ort": 11.7, "maks": 12.4} and g["ENGELLE"]["sonra"] == {"n": 6, "ort": 11.4, "maks": 13.2}
+    assert g["HESAPLA"]["ilk"]["ort"] == 68.6 and g["HESAPLA"]["sonra"]["maks"] == 97.3
+    assert olcum.davranis_gecikme(None) == [] and olcum.davranis_gecikme("rapor yok") == []
+
+
+def test_faz22_olcum_sekmesi_etiket_ve_ozet():
+    def uyg():
+        from arayuz import bilesenler as b, stil
+        stil.uygula()
+        b.olcum_sekmesi()
+    at = AppTest.from_function(uyg, default_timeout=60).run()
+    assert not at.exception
+    assert any(x.value == "Doğru kaynak maddeyi bulma: geri çağırma (kaç/N)" for x in at.subheader)
+    cap = " ".join(c.value for c in at.caption)
+    assert "Geri çağırma: beklenen kaynak maddelerinin kaçı bulundu (madde satırı)." in cap
+    assert "Komut engelleme 11,7 → 11,4 sn (en yüksek 12,4 → 13,2)" in cap
+    assert "Hesaplama 68,6 → 82,0 sn (en yüksek 83,7 → 97,3)" in cap
