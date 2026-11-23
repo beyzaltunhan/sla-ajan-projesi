@@ -98,7 +98,7 @@ Yani öncelik yoksa süre aracı **atlanır**; son tarih alanı boş kalır.
 | HESAPLA – onay yok | Çalışır | Evet | Hayır |
 | HESAPLA – onay var | Çalışır | Evet | BEKLEMEDE → karar |
 
-## 8. Çıktı şeması (taslak, `schemas/onay_paketi.py` bu alanlara göre yazılacak)
+## 8. Çıktı şeması (`schemas/onay_paketi.py` bu alanlara göre yazıldı)
 
 `davranis`, `neden`, `musteri`, `paket`, `oncelik`, `son_tarih`, `risk` (NORMAL/YUKSEK/IHLAL), `kredi` (yüzde, tutar), `onay_gerekli`, `onay_nedenleri`, `kaynaklar` (doküman + madde), `durum` (TAMAMLANDI/BEKLEMEDE; hata yolunda ISLENEMEDI, bu durumda `davranis` boştur), `mesaj`.
 
