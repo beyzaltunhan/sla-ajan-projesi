@@ -45,6 +45,7 @@ streamlit run arayuz/uygulama.py
 3. **Kayıtlı Çalıştırmalar**: önceden çalıştırılmış sonuçlar (canlı değildir, ekranda etiketlidir).
 4. **Bildirimler**: `dis_sistem/bildirimler.jsonl` dosyasındaki iki örnek bildirim. Onayla/Reddet düğmeleri için ajan servisi
    (`python servis.py`) çalışıyor olmalıdır; kapalıysa yalnızca "Onay için ajan servisi gerekir." notu görünür.
+   Örnek bildirimlerden ikincisi geliştirme bilgisayarındaki bir ajan talebine aittir; taze kurulumda Onayla/Reddet çalışmaz, kart yalnızca örnek olarak görünür.
 
 **Sonra Talep İşle** (Ollama + indeks gerekir): kenar çubuğunda model durumunun "hazır" olmasını bekleyin, "Hazır örnek"
 listesinden **"Güvenlik: komut içeren talep"** ya da **"SLA ihlali: onay gerektiren talep"** seçin ve işleyin.
@@ -75,7 +76,8 @@ ve iki düzeltmeden sonra **düzeltme sonrası**. Kaynak: `sonuclar/ilk_kosu_rap
   sonuçlar yön göstericidir.
 - Zor sette öncelik kuralı maddesini tam bulma 0/7, en az birini bulma 6/7 (düzeltme sonrası rapor).
 - Süre artışının bir kısmı istem büyümesinden, bir kısmı koşu sırasındaki makine yükünden olabilir (rapor ayrıştıramıyor).
-- Talep başına süre yaklaşık 10 sn–2 dk; komut engelleme ~11–18 sn, hesaplama ~76–101 sn (makineye bağlı).
+- Karar türüne göre ortalama süre (rapordaki "Alınan davranışa göre toplam süre" tablosu): komut engelleme 11,7 sn (ilk ölçüm) / 11,4 sn (düzeltme sonrası); hesaplama 68,6 sn (ilk ölçüm) / 82,0 sn (düzeltme sonrası), en yüksek 97,3 sn.
+- Canlı denemelerde bizim bilgisayarda hesaplama 76–101 sn, komut engelleme 10–18 sn sürdü; süre makinenin güç/yük durumuna bağlıdır.
 
 ## Akış ve dosya haritası
 
@@ -270,7 +272,7 @@ Notlar:
 5. Deneme kayıtlarını temizleyin: `python demo/sifirla.py` (önce yedek alır, onay ister; yalnızca git'e girmeyen
    `checkpoints.sqlite*` dosyalarına dokunur).
 6. `streamlit run arayuz/uygulama.py` ile açın; yan çubukta model durumunun "hazır" olmasını bekleyin
-   ("Modeli ısıt" yaklaşık 6–10 sn sürüyorsa sağlıklıdır).
+   ("Modeli ısıt" geliştirme bilgisayarında yaklaşık 6–10 sn sürdü).
 7. Sıralı akış: **"Güvenlik: komut içeren talep"** (engellenir) → **"SLA ihlali: onay gerektiren talep"** (onay bekler;
    gerekçeyle Reddet ya da Onayla) → Bildirimler → Ölçüm Sonuçları.
 8. Yedek plan: model ya da ağ sorunu olursa **Kayıtlı Çalıştırmalar** sekmesi (canlı değil, ekranda etiketli).
