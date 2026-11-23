@@ -1,43 +1,131 @@
 # SLA Uyum ve Eskalasyon Ajanı (prototip)
 
-Kurgusal firma Poyraz Bulut Yazılım A.Ş. için, sentetik veriyle çalışan SLA uyum ve eskalasyon ajanı prototipi.
-(README'nin tamamı teslim aşamasında yazılacaktır; aşağıda yalnızca arayüz ve demo hazırlığı yer alır.)
+## Ne bu?
 
-## Arayüzü çalıştırma
+Bir müşteri destek talebi geldiğinde şunları yapan küçük bir yapay zekâ ajanı: talepte sisteme komut vermeye çalışan bir metin
+var mı diye bakar, hangi müşteri olduğunu bulur, önceliği (P1–P4) SLA dokümanlarındaki maddelere dayanarak önerir, cevap süresini
+ve gecikme riskini hesaplar, gerekiyorsa **yöneticiden onay ister**. Onayı yalnızca insan verir; hiçbir şey otomatik onaylanmaz.
+
+- Firma (Poyraz Bulut Yazılım A.Ş.), müşteriler, sözleşmeler ve talepler **kurgusaldır**; gerçek veri kullanılmadı.
+- Model bilgisayarınızda (Ollama, CPU) çalışır.
+- Bu bir **prototiptir**: gerçek e-posta, Slack veya destek sistemine bağlı değildir (bkz. [Sınırlamalar](#sınırlamalar)).
+
+## Gereksinimler
+
+- **Python**: geliştirme Python 3.14.0 ile yapıldı; diğer sürümler denenmedi.
+- **Ollama** (yerel model sunucusu) ve iki model:
+  - `qwen3.5:4b` (sohbet/karar modeli)
+  - `embeddinggemma` (doküman arama için embedding modeli)
+- **Docker** yalnızca n8n otomasyon akışı için gerekir ve **isteğe bağlıdır**.
+
+## Kurulum
 
 ```
 pip install -r requirements.txt
+ollama pull qwen3.5:4b
+ollama pull embeddinggemma
+python indeks_olustur.py
+```
+
+> **İNDEKS ADIMINI ATLAMAYIN.** `python indeks_olustur.py`, SLA dokümanlarından arama indeksini (`chroma_db/`) oluşturur
+> (Ollama çalışıyor olmalı). **İndeks oluşturulmadan Talep İşle kaynaksız sonuç verebilir; arayüz hata göstermeyebilir.**
+> `chroma_db/` zaten doluysa betik dokunmadan çıkar; silip yeniden oluşturmak için `python indeks_olustur.py --yenile`.
+
+## İlk 5 dakika
+
+```
 streamlit run arayuz/uygulama.py
 ```
 
-- **Ollama açık olmalı** ve modeller yüklü olmalı (`qwen3.5:4b`, `embeddinggemma`). Uygulama açılışta modelleri ısıtır;
-  yan çubuktaki "Modeli ısıt" düğmesiyle tekrarlanabilir.
-- Arayüz ajanı olduğu gibi kullanır (`ajan.talep_isle` / `ajan.onay_ver`). Bekleyen onaylar `checkpoints.sqlite` içinde
-  tutulur; uygulama yeniden başlasa da listelenir.
-- Sekmeler: **Talep İşle**, **Bildirimler**, **Ölçüm Sonuçları**, **Mimari ve Sınırlamalar**, **Kayıtlı Çalıştırmalar**
-  (önceden çalıştırılmış, canlı olmayan kayıtlar; `demo/kayitli_sonuclar.json`).
-- **Bildirimler** sekmesi `dis_sistem/bildirimler.jsonl` dosyasını okur (n8n akışının ve simülatörün yazdığı sentetik bildirimler;
-  gerçek e-posta/Slack değildir), yeniden eskiye kartlar halinde gösterir; "Yenile" düğmesi vardır. "Onay gerekli"
-  (`onay-kuyrugu`) kartlarında **Onayla / Reddet** düğmeleri ajan servisini çağırır (`http://127.0.0.1:8000`; değiştirmek için
-  ortam değişkeni `SLA_SERVIS_URL`): önce `GET /durum` ile `ONAY_BEKLIYOR` doğrulanır, sonra `POST /onay` gönderilir; reddetmek
-  için gerekçe zorunludur. Bu düğmeler **insan kararıdır**, hiçbir şey otomatik onaylanmaz. Servis kapalıysa "Ajan servisi
-  çalışmıyor" uyarısı görünür; karara bağlanmış talepte düğmeler pasif olur ve karar kartı gösterilir. Bildirim dosyasının
-  yolu `SLA_BILDIRIM_DOSYASI` ile değiştirilebilir. Onay düğmelerinin çalışması için `python servis.py` çalışıyor olmalıdır.
-- Kayıtlı sonuçları yenilemek için: `python demo/kayit_al.py`.
+**Önce Ollama gerektirmeyen sekmeler** (yalnızca dosya okurlar; Ollama kapalıyken de açılmaları beklenir — bu, kod okunarak
+çıkarıldı, Ollama olmayan bir makinede denenmedi):
 
-## Demo hazırlık listesi
+1. **Ölçüm Sonuçları**: 59 talepte ölçülen doğruluk, grafikler, hata türleri, talep bazında değişim.
+2. **Mimari ve Sınırlamalar**: adım adım akış (hangi adımı model, hangisini kod yapar), dış katmanlar şeması, sınırlamalar.
+3. **Kayıtlı Çalıştırmalar**: önceden çalıştırılmış sonuçlar (canlı değildir, ekranda etiketlidir).
+4. **Bildirimler**: `dis_sistem/bildirimler.jsonl` dosyasındaki iki örnek bildirim. Onayla/Reddet düğmeleri için ajan servisi
+   (`python servis.py`) çalışıyor olmalıdır; kapalıysa yalnızca "Onay için ajan servisi gerekir." notu görünür.
 
-1. Bilgisayarı **prize takın**; Windows güç planını **En iyi performans** yapın (model CPU'da çalışır, pil modunda belirgin yavaşlar).
-2. **Diğer uygulamaları kapatın** (tarayıcı sekmeleri, müzik, sohbet uygulamaları): CPU yükü gecikmeyi doğrudan artırır.
-3. **Ollama'yı başlatın** (`ollama ps` / `ollama list` ile kontrol edin).
-4. Ön kontrolü çalıştırın: `python demo/on_kontrol.py` — Ollama, modeller, ısınma ve Demo 1 / Demo 2 uçtan uca
-   (3 tekrar, tutarlılık ve süreler). Tüm örnekler için: `python demo/on_kontrol.py --tumu`.
-5. Deneme kayıtlarını temizleyin: `python demo/sifirla.py` — önce yedek alır, onay ister, sonra temiz kayıtla başlatır
-   (yalnızca git'e girmeyen yerel `checkpoints.sqlite*` dosyalarına dokunur; yedek `demo/yedek/` altına gider).
-6. Uygulamayı başlatın, yan çubukta "Model durumu: hazır" yazısını bekleyin, bir kez Demo 1'i deneyin.
-7. Yedek plan: model/ağ sorunu olursa **Kayıtlı Çalıştırmalar** sekmesi (canlı değil, etiketli) gösterilebilir.
+**Sonra Talep İşle** (Ollama + indeks gerekir): kenar çubuğunda model durumunun "hazır" olmasını bekleyin, "Hazır örnek"
+listesinden **"Güvenlik: komut içeren talep"** ya da **"SLA ihlali: onay gerektiren talep"** seçin ve işleyin.
+Talep başına yaklaşık 10 sn–2 dk sürer.
 
-Süre beklentisi (ısınmış model, CPU): komutlu talep ~12 sn; hesaplı talep ~60–100 sn.
+Ekran görüntüleri: [Talep İşle](screenshots/ana.png) · [Sonuç](screenshots/sonuc.png) · [Kayıtlı](screenshots/kayitli.png) ·
+[Bildirimler](screenshots/bildirimler.png) · [Mimari](screenshots/mimari.png) · [Ölçüm](screenshots/olcum.png) ·
+[n8n akışı](screenshots/n8n_is_akisi.png)
+
+## Sonuç özeti
+
+Aynı 59 talep (ana set 50 + zor set 9; bunların 15'i bağımsız yazıldı) iki kez ölçüldü: kod dondurulmuş haliyle **ilk ölçüm**
+ve iki düzeltmeden sonra **düzeltme sonrası**. Kaynak: `sonuclar/ilk_kosu_rapor.md`, `sonuclar/duzeltme_sonrasi_rapor.md`
+(Ölçüm Sonuçları sekmesi aynı dosyaları okur).
+
+| Ölçüt ("tam doğru" = davranış, müşteri, paket, öncelik, son tarih, risk, kredi, onay hepsi doğru) | İlk ölçüm | Düzeltme sonrası |
+|---|---|---|
+| Toplam (59) | 49/59 | 56/59 |
+| Ana set (50) | 44/50 | 49/50 |
+| Zor set (9) | 5/9 | 7/9 |
+| Bağımsız 15 (Ana+Zor'un alt kümesi) | 10/15 | 12/15 |
+| Onay yakalama (onay gerekenlerde onay istendi) | 19/20 | 20/20 |
+| Yanlış alarm (onay gerekmezken onay istendi) | 0/21 | 0/21 |
+| Talep başına ortalama süre | 52,2 sn | 65,9 sn |
+
+- **Dürüstlük notu:** düzeltmeler test hatalarına bakılarak yapıldı; **düzeltme sonrası sonuç bağımsız kanıt değildir.
+  Temiz sayım ilk ölçümdür.** 9 talep düzeldi, 2 bozuldu (T44, T59), 1 hâlâ hatalı (T54); exact McNemar p ≈ 0,065 (iki yönlü):
+  sonuçlar yön göstericidir.
+- Zor sette öncelik kuralı maddesini tam bulma 0/7, en az birini bulma 6/7 (düzeltme sonrası rapor).
+- Süre artışının bir kısmı istem büyümesinden, bir kısmı koşu sırasındaki makine yükünden olabilir (rapor ayrıştıramıyor).
+- Talep başına süre yaklaşık 10 sn–2 dk; komut engelleme ~11–18 sn, hesaplama ~76–101 sn (makineye bağlı).
+
+## Akış ve dosya haritası
+
+Akış (`tasarim/karar_sirasi.md` ve kod; LangGraph düğümleri `ajan.py` içinde):
+
+| Adım | Ne olur | Kim | Dosya · fonksiyon |
+|---|---|---|---|
+| 1a | Metinde kayıtlı müşteri adı aranır | kod | `ajan.n_musteri_arama` → `sla_araclari.musteri_metinde_ara` |
+| 1b | Komut/talimat var mı? Varsa **ENGELLE** | model | `ajan.n_talimat` → `llm_adimlari.talimat_tespit` |
+| 1c | Talep türü | model | `ajan.n_talep_turu` → `llm_adimlari.talep_turu_bul` |
+| 1d | Firma adı yedeği (yalnızca 1a bulamazsa) | model | `ajan.n_firma_adi` → `llm_adimlari.firma_adi_bul` |
+| 3 | Ön yönlendirme (BILMIYORUM / SORU_SOR / devam) | kod | `ajan.n_on_yonlendirme` |
+| 4 | Doküman 02'den kaynak getirme + öncelik önerisi | arama + model | `ajan.n_oncelik` → `oncelik_onerisi.baglam_parcalari` (`rag.arama.retrieve`), `oncelik_onerisi.oncelik_oner` |
+| 5 | Öncelik belirsizse soru sor / yöneticiye ilet | kod | `ajan.n_oncelik_yonlendirme` |
+| 6 | Son tarih, risk, kredi hesabı | kod | `ajan.n_hesap` → `sla_araclari.son_tarih_hesapla`, `risk_degerlendir`, `kredi_hesapla` |
+| 7 | Onay gerekli mi? | kod | `ajan.n_onay_kapisi` → `sla_araclari.onay_gerekli` |
+| 8 | Onay paketi şemayla doğrulanır | kod | `ajan.n_paket_dogrula` → `schemas.onay_paketi.KararCiktisi` |
+| 9 | İnsan onayı (Onayla / gerekçeli Reddet) | insan + kod | `ajan.n_insan_onayi` (LangGraph `interrupt`), girişi `ajan.onay_ver` |
+| 10 | Onay sonrası işlemler kayıt olarak tutulur | kod | `ajan.n_uygula` / `ajan.n_red_kaydi` |
+
+Giriş fonksiyonu: `ajan.talep_isle(...)`; ENGELLE, BILMIYORUM, SORU_SOR ve ONCELIK_BELIRLENEMEDI uç düğümleri de `ajan.py` içindedir.
+
+Dosya haritası:
+
+| Yol | Ne işe yarar |
+|---|---|
+| `arayuz/` | Streamlit arayüzü (`uygulama.py` giriş noktası; sekmeler `bilesenler.py`, grafikler `grafikler.py`) |
+| `ajan.py` | LangGraph ajan akışı: düğümler, yönlendirme, onay (interrupt), `talep_isle` / `onay_ver` |
+| `llm_adimlari.py` | Küçük model çağrıları: komut tespiti, talep türü, firma adı |
+| `oncelik_onerisi.py` | Adım 4: getirilen dokümanlarla öncelik önerisi |
+| `sla_araclari.py` | Deterministik hesaplar: müşteri arama, son tarih, risk, kredi, onay kapısı |
+| `schemas/` | Pydantic çıktı şeması (`onay_paketi.py`: `KararCiktisi`) |
+| `rag/` | Doküman parçalama, Chroma indeksi, arama, geri çağırma ölçümü |
+| `indeks_olustur.py` | `chroma_db/` indeksini oluşturan betik |
+| `servis.py` | FastAPI servisi (ajanı HTTP'ye açar; n8n için) |
+| `mcp_sunucusu.py` | SLA hesap araçlarını MCP olarak sunar |
+| `dis_sistem/` | Sentetik destek sistemi/bildirim simülatörü ve örnek bildirimler |
+| `n8n/` | n8n Docker kurulumu ve iş akışı JSON'u |
+| `degerlendirme/` | Ölçüm koşucusu, rapor ve karşılaştırma kodu |
+| `sonuclar/` | Dondurulmuş ham sonuçlar ve ölçüm raporları |
+| `demo/` | Sunum yardımcıları: ön kontrol, sıfırlama, kayıtlı sonuçlar |
+| `data/` | Müşteri kayıtları, SLA yapılandırması, 59 talepli test seti |
+| `docs/` | 4 SLA dokümanı (sözleşme, öncelik rehberi, eskalasyon, SSS) |
+| `tasarim/` | Karar sırası ve test seti inceleme notları |
+| `deneme/` | Geliştirme sırasında kullanılan deneme/ölçüm betikleri |
+| `tests/` | pytest testleri |
+
+## İsteğe bağlı bileşenler
+
+Aşağıdaki üç bölüm (MCP, ajan servisi, n8n) arayüz için zorunlu değildir; n8n için Docker gerekir.
 
 ## MCP sunucusu
 
@@ -66,7 +154,7 @@ Claude Desktop yapılandırma örneği (`claude_desktop_config.json`; yolları k
   "mcpServers": {
     "sla-hesap-araclari": {
       "command": "python",
-      "args": ["C:/projeler/sla-ajan-projesi/proje/mcp_sunucusu.py"]
+      "args": ["<proje yolu>/mcp_sunucusu.py"]
     }
   }
 }
@@ -78,7 +166,7 @@ oturumuyla ve ayrı süreç olarak stdio üzerinden doğrulandı.
 ## Ajan servisi
 
 `servis.py`, ajanı HTTP üzerinden çağrılabilir yapar (n8n gibi dış otomasyonlar için); ajan kodu değişmez.
-Model CPU'da bir talebi 15–95 sn'de işlediği için `POST /talep` **asenkrondur**: hemen 202 ve bir `talep_id` döner, sonuç
+Model CPU'da bir talebi yaklaşık 10 sn–2 dk'da işlediği için `POST /talep` **asenkrondur**: hemen 202 ve bir `talep_id` döner, sonuç
 `GET /durum/{talep_id}` ile okunur. Model tek olduğundan talepler **sırayla** (aynı anda tek talep) işlenir.
 
 ```
@@ -139,7 +227,7 @@ Elle tetikle (yalnızca n8n arayüzü) ──┴─> GET simülatör /talepler/s
 
 **Onayı n8n VERMEZ.** n8n akışı `/onay` uç noktasını hiçbir zaman çağırmaz (testle doğrulanır); "Onay gerekli" dalı yalnızca
 bildirim yazar ve biter. Onay yalnızca insandır: Streamlit arayüzü ya da elle `POST /onay/{talep_id}`.
-n8n içinde MCP istemcisi veya AI Agent düğümü **kullanılmaz**: yavaş yerel modelle (CPU'da 15–95 sn) uyumsuzdur ve
+n8n içinde MCP istemcisi veya AI Agent düğümü **kullanılmaz**: yavaş yerel modelle (CPU'da yaklaşık 10 sn–2 dk) uyumsuzdur ve
 karar zaten ajan servisindedir; akış yalnızca HTTP Request, Wait, IF/Switch ve Webhook gibi temel düğümler içerir.
 Dış sistem (`dis_sistem/simulator.py`) **sentetiktir; gerçek e-posta, Slack veya destek sistemine bağlı değildir.**
 
@@ -157,7 +245,7 @@ docker compose up -d
 docker exec sla-n8n n8n import:workflow --input=/import/sla_is_akisi.json
 docker exec sla-n8n n8n publish:workflow --id=slaIsAkisi0001
 docker restart sla-n8n
-# Tetikle (demo için simülatör Demo 1 ve Demo 2'yi sırayla verir)
+# Tetikle (demo için simülatör iki sabit örnek talebi sırayla verir: "Güvenlik: komut içeren talep", "SLA ihlali: onay gerektiren talep")
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5678/webhook/yeni-talep -ContentType "application/json" -Body '{}'
 Invoke-RestMethod http://127.0.0.1:8001/bildirimler          # bildirimler
 Invoke-RestMethod http://127.0.0.1:8000/bekleyen              # onay bekleyenler
@@ -168,6 +256,44 @@ Notlar:
   eski container çalışırken `sla-n8n` başlamaz (port çakışması); biri durdurulmalıdır.
 - Git Bash'te `docker exec` yollarında `MSYS_NO_PATHCONV=1` gerekir (yol dönüşümünü kapatmak için).
 - Veri Docker named volume'unda (`n8n_sla_n8n_veri`) durur, git'e girmez. Akışta kimlik bilgisi veya anahtar yoktur;
-  bildirim ve sonuç kayıtları (`dis_sistem/bildirimler.jsonl`, `sonuclar.json`) git dışıdır. Demo öncesi `POST /sifirla` ile temizlenir.
+  `dis_sistem/sonuclar.json` git dışıdır; `dis_sistem/bildirimler.jsonl` iki sentetik örnek bildirimle repoda durur (n8n/simülatör çalışınca dosya değişir). `POST /sifirla` bu dosyaları siler (örnek bildirimler dahil) — sunumdan önce ÇALIŞTIRMAYIN.
 - İlk açılışta n8n arayüzü (http://127.0.0.1:5678) bir sahip hesabı oluşturmanızı ister; webhook akışı bunsuz da çalıştı.
 - Servis ve simülatörü `0.0.0.0`'da çalıştırmak onları yerel ağa açar; güvenilmeyen ağlarda kullanmayın.
+
+
+## Sunum günü
+
+1. Bilgisayarı **fişe takın**; Windows güç planını **"En iyi performans"** yapın (model CPU'da çalışır).
+2. **Ağır uygulamaları kapatın** (tarayıcı sekmeleri, müzik, sohbet uygulamaları): CPU yükü süreyi doğrudan artırır.
+3. **Ollama'yı başlatın** (`ollama list` ile modelleri kontrol edin).
+4. Ön kontrol: `python demo/on_kontrol.py` (Ollama, modeller, ısınma ve iki ana örnek; `--tumu` ile tüm örnekler).
+5. Deneme kayıtlarını temizleyin: `python demo/sifirla.py` (önce yedek alır, onay ister; yalnızca git'e girmeyen
+   `checkpoints.sqlite*` dosyalarına dokunur).
+6. `streamlit run arayuz/uygulama.py` ile açın; yan çubukta model durumunun "hazır" olmasını bekleyin
+   ("Modeli ısıt" yaklaşık 6–10 sn sürüyorsa sağlıklıdır).
+7. Sıralı akış: **"Güvenlik: komut içeren talep"** (engellenir) → **"SLA ihlali: onay gerektiren talep"** (onay bekler;
+   gerekçeyle Reddet ya da Onayla) → Bildirimler → Ölçüm Sonuçları.
+8. Yedek plan: model ya da ağ sorunu olursa **Kayıtlı Çalıştırmalar** sekmesi (canlı değil, ekranda etiketli).
+
+> **UYARI:** Simülatörün `POST /sifirla` ucu `dis_sistem/bildirimler.jsonl` dosyasını (ve `sonuclar.json`'u) **siler**.
+> Bildirimler sekmesindeki iki örnek bildirim kaybolur; sunumdan önce **çalıştırmayın**.
+
+## Sınırlamalar
+
+- Veri sentetiktir (kurgusal firma ve sözleşmeler); gerçek müşteri verisi kullanılmadı.
+- Yerel, küçük bir model (qwen3.5:4b) CPU'da çalışır; talep başına yaklaşık 10 sn–2 dk sürer.
+- Küçük model zor taleplerde yanılabilir (zor sette öncelik kuralı maddesini tam bulma 0/7, en az birini bulma 6/7); bu yüzden kritik kararları insan verir.
+- Ajan yalnızca verilen SLA dokümanlarına dayanır; dokümanda olmayan konuda "bilmiyorum" der.
+- Değerlendirme 59 talep üzerinde yapıldı; sonuçlar yön göstericidir (exact McNemar p ≈ 0,065).
+- Prototip kapsamı: talepler tek model üzerinde sırayla işlenir; onay sonrası işlemler kayıt olarak tutulur, dış sistem ve bildirimler simülasyondur.
+- MCP sunucusu gerçek bir MCP istemcisiyle (ör. Claude Desktop) denenmedi; yalnızca testlerde bir MCP istemci oturumuyla ve ayrı süreç olarak stdio üzerinden doğrulandı.
+- n8n akışında yalnızca ENGELLE ve ONAY_BEKLIYOR dalları canlı çalıştırıldı; diğer dallar yapısal testlerle doğrulandı, canlı çalıştırılmadı.
+- Python 3.14.0 dışındaki sürümler ve farklı ortamlar denenmedi.
+
+## Testler
+
+```
+python -m pytest -q
+```
+
+432 test; test dosyaları Ollama'yı taklit eder (gerçek model çağrılmaz). **Ollama kapalıyken çalıştırılarak denenmedi.**
