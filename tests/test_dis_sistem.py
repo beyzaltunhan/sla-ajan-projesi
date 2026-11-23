@@ -152,5 +152,7 @@ def test_compose_sabit_surum_yerel_port_ve_ayarlar():
 
 def test_gitignore_n8n_ve_dis_sistem_kayitlari():
     g = (KOK / ".gitignore").read_text(encoding="utf-8")
-    for satir in ("dis_sistem/bildirimler.jsonl", "dis_sistem/sonuclar.json", "n8n/.env", "n8n/veri/"):
+    for satir in ("dis_sistem/sonuclar.json", "n8n/.env", "n8n/veri/", ".env", "venv/", "env/"):
         assert satir in g
+    # örnek bildirimler (2 sentetik kayıt) bilerek repoya alındı: ignore edilmemeli
+    assert "dis_sistem/bildirimler.jsonl" not in g

@@ -9,7 +9,9 @@ __pycache__/
 checkpoints.db*
 demo/yedek/
 servis_checkpoints.sqlite*
-dis_sistem/bildirimler.jsonl
 dis_sistem/sonuclar.json
 n8n/.env
 n8n/veri/
+.env
+venv/
+env/
