@@ -303,7 +303,7 @@ def test_tam_sayfa_acilir_bes_sekme_ve_talep_ise_bozulmadi(monkeypatch, tmp_path
     assert not at.exception
     assert [t.label for t in at.tabs] == ["Talep İşle", "Ölçüm Sonuçları", "Mimari ve Sınırlamalar", "Bildirimler", "Kayıtlı Çalıştırmalar"]
     o = at.selectbox(key="ornek_ad")
-    assert o.options[1] == "Demo 1: Komutlu talep" and o.options[2] == "Demo 2: İhlalli P2 talep"
+    assert o.options[1] == "Güvenlik: komut içeren talep" and o.options[2] == "SLA ihlali: onay gerektiren talep"
     o.select(o.options[2]).run()
     assert "iki gündür" in at.text_area(key="talep_metni").value
     assert any(b.label == "İşle" for b in at.button)

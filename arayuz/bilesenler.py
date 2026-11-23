@@ -238,7 +238,7 @@ def _hesapla_goster(c: dict, s: dict | None = None):
         S.kart("Kredi", S.kac(kredi_de), alt=B.KREDI_NEDEN.get(k.get("neden"), k.get("neden", ""))),
         S.kart("Onay durumu", S.rozet(ad, sinif))]))
     S.html(f'<div class="silik">{S.kac(c["musteri"])} · Paket: {S.kac(str(c["paket"]).capitalize())}</div>')
-    S.html(f'<p style="margin:.6rem 0"><b>Gerekçe / özet:</b> {S.kac(c["mesaj"])}</p>')
+    S.html(f'<p style="margin:.6rem 0"><b>Gerekçe / özet:</b> {S.kac(B.onay_cumlesi_gizle(c["mesaj"], bool((s or {}).get("onay_sonucu"))))}</p>')
 
 
 def _kaynak_html(k: dict) -> str:
@@ -356,14 +356,14 @@ def olcum_sekmesi():
     t_sonra = sum(sonra["tam"][k][0] for k in ("Ana set", "Zor set"))
     n = ilk["n"]
     st.subheader(f"Toplam {n} talepte tam doğru: {olcum.kn(t_ilk, n)} → {olcum.kn(t_sonra, n)}")
-    st.caption("Temiz sayım ilk koşudur; düzeltme sonrası sayılar tam bağımsız değildir.")
+    st.caption("Temiz sayım ilk ölçümdür; düzeltme sonrası sayılar tam bağımsız değildir.")
     with st.expander("Ölçüm bilgisi"):
-        st.caption(f"İlk koşu: commit {ilk['meta']['commit'][:8]}, {ilk['meta']['tarih']} · Düzeltme sonrası: commit "
+        st.caption(f"İlk ölçüm: commit {ilk['meta']['commit'][:8]}, {ilk['meta']['tarih']} · Düzeltme sonrası: commit "
                    f"{sonra['meta']['commit'][:8]}, {sonra['meta']['tarih']} · model {sonra['meta']['chat_model']}")
         st.caption('"Tam doğru": davranış, neden, müşteri, paket ve (HESAPLA\'da) öncelik, son tarih, risk, kredi, onay gerekli ve nedenleri '
                    'hepsi doğru; "davranış doğru": yalnızca ajanın seçtiği davranış (HESAPLA, BILMIYORUM, ...) beklenenle aynı.')
         b_, c_ = len(r["duzeldi"]), len(r["bozuldu"])
-        st.caption(f"Exact McNemar (ilk koşu → düzeltme sonrası, {b_} düzeldi / {c_} bozuldu): p = {G.virgul(G.mcnemar_tam(b_, c_), 3)} "
+        st.caption(f"Exact McNemar (ilk ölçüm → düzeltme sonrası, {b_} düzeldi / {c_} bozuldu): p = {G.virgul(G.mcnemar_tam(b_, c_), 3)} "
                    "(iki yönlü, binom). Küçük örnek; yön göstericidir.")
         st.caption("Düzeltmeler test hatalarına bakılarak yapıldı; bağımsız kanıt değildir.")
         st.caption(f"Kesinti şüpheli talepler hariç ortalama süre: {G.virgul(ilk['gecikme_ort_supheli_haric'])} → "
@@ -371,9 +371,9 @@ def olcum_sekmesi():
                    f"(işaretlenenler: ilk {', '.join(ilk['supheli']) or '—'}; sonra {', '.join(sonra['supheli']) or '—'}). "
                    "Süre, CPU'da çalışan küçük modelin ve o anki makine yükünün ürünüdür.")
         st.caption(olcum.NOT)
-    st.markdown("**Tam doğru: ilk koşu → düzeltme sonrası**")
+    st.markdown("**Tam doğru: ilk ölçüm → düzeltme sonrası**")
     st.altair_chart(G.tam_dogru_grafigi(r), use_container_width=True)
-    st.caption("Gri: ilk koşu · mavi: düzeltme sonrası · çizgi: %95 Wilson güven aralığı · içi boş işaret: bağımsız 15 (Ana+Zor'un alt kümesi).")
+    st.caption("Gri: ilk ölçüm · mavi: düzeltme sonrası · çizgi: %95 Wilson güven aralığı · içi boş işaret: bağımsız 15 (Ana+Zor'un alt kümesi).")
     S.html(S.kartlar([
         S.kart("Davranış doğru (Ana set)", S.kac(f"{olcum.kn(*ilk['dav']['Ana set'])} → {olcum.kn(*sonra['dav']['Ana set'])}")),
         S.kart("Davranış doğru (Zor set)", S.kac(f"{olcum.kn(*ilk['dav']['Zor set'])} → {olcum.kn(*sonra['dav']['Zor set'])}")),
@@ -394,13 +394,16 @@ def olcum_sekmesi():
     st.altair_chart(G.birim_grafik(r), use_container_width=True)
     st.caption("Her kare bir talep; üzerine gelince T numarası görünür. "
                f"Mavi: düzeldi ({len(g['Düzeldi'])}) · turuncu: bozuldu, yeni regresyon ({len(g['Bozuldu'])}) · "
-               f"koyu gri: hâlâ hatalı ({len(g['Hâlâ hatalı'])}) · açık gri: iki koşuda da doğru ({len(g['İki koşuda da doğru'])}).")
+               f"koyu gri: hâlâ hatalı ({len(g['Hâlâ hatalı'])}) · açık gri: iki ölçümde de doğru ({len(g['İki ölçümde de doğru'])}).")
+    d_ = g["İki ölçümde de doğru"]
+    st.caption(f"İlk ölçümde doğru: {len(d_)} + {len(r['bozuldu'])} = {len(d_) + len(r['bozuldu'])}; "
+               f"düzeltme sonrası doğru: {len(d_)} + {len(r['duzeldi'])} = {len(d_) + len(r['duzeldi'])}.")
     with st.expander("Talep numaraları"):
         st.markdown(f"- **Düzeldi ({len(r['duzeldi'])}):** {', '.join(r['duzeldi']) or '—'}\n"
                     f"- **Bozuldu — yeni regresyon ({len(r['bozuldu'])}):** {', '.join(r['bozuldu']) or '—'}\n"
                     f"- **Hâlâ hatalı ({len(r['hala_hatali'])}):** {', '.join(r['hala_hatali']) or '—'}\n"
-                    f"- **İki koşuda da doğru:** {r['degismedi_dogru']}")
-    for baslik, yol in (("İlk koşu raporu (dondurulmuş)", olcum.ILK_RAPOR), ("Düzeltme sonrası rapor", olcum.SONRA_RAPOR)):
+                    f"- **İki ölçümde de doğru:** {r['degismedi_dogru']}")
+    for baslik, yol in (("İlk ölçüm raporu (dondurulmuş)", olcum.ILK_RAPOR), ("Düzeltme sonrası rapor", olcum.SONRA_RAPOR)):
         with st.expander(baslik):
             md = olcum.rapor_oku(yol)
             st.markdown(md) if md else st.warning(f"{yol.name} bulunamadı.")
@@ -450,7 +453,7 @@ SINIRLAMALAR = [
 SINIRLAMA_AYRINTI = [
     "MCP sunucusu hesap araçlarını standart arayüzle sunar, ajan bu araçları doğrudan çağırır (gerçek bir MCP istemcisiyle uçtan uca denenmedi).",
     "n8n akışında yalnızca ENGELLE ve ONAY_BEKLIYOR dalları canlı denendi; diğer dallar yapısal testlerle doğrulandı, canlı çalıştırılmadı.",
-    "Düzeltmeler ilk koşu hatalarının kategorisine bakılarak yapıldı; temiz sayım ilk koşudur.",
+    "Düzeltmeler ilk ölçüm hatalarının kategorisine bakılarak yapıldı; temiz sayım ilk ölçümdür.",
     "Onaydan sonra gerçek sisteme yazılmaz; uygulanan işlemler kayıt olarak tutulur.",
     "Süre, makinenin o anki yüküne bağlıdır; küçük kümelerde tek talep yüzdeyi belirgin değiştirir.",
 ]
@@ -472,7 +475,7 @@ def akis_html(adimlar=ADIMLAR) -> str:
 # Dış katmanlar: her bileşen YALNIZ BİR KEZ. (kimlik, etiket, tür, tek satırlık rol)
 # tür: otomasyon (lacivert) · kod (gri) · model (mavi-yeşil: model + kod) · sentetik (açık sarı, kesikli) · insan (beyaz)
 DIS_BILESENLER = [
-    ("destek", "Destek sistemi", "sentetik", "Sentetik simülatör: sabit Demo 1 ve Demo 2 taleplerini verir."),
+    ("destek", "Destek sistemi", "sentetik", "Sentetik simülatör: sabit iki örnek talebi (komut içeren, SLA ihlalli) verir."),
     ("n8n", "n8n", "otomasyon", "Talebi alır, ajan servisini çağırır, sonucu yoklar ve bildirime yönlendirir; karar ve onay vermez."),
     ("servis", "Ajan servisi (FastAPI)", "kod", "POST /talep (asenkron), GET /durum, POST /onay; talepleri sırayla işler."),
     ("ajan", "Ajan (LangGraph)", "model", "Karar akışı: model adımları ve deterministik hesaplar; insan onayını bekler."),
@@ -639,7 +642,7 @@ def kayitli_sekmesi():
     if not kayitlar:
         st.warning("Kayıtlı sonuç bulunamadı (demo/kayitli_sonuclar.json). `python demo/kayit_al.py` ile oluşturulur.")
         return
-    ad = st.selectbox("Kayıt", [k["ad"] for k in kayitlar], key="kayit_sec")
+    ad = st.selectbox("Kayıt", [k["ad"] for k in kayitlar], key="kayit_sec", format_func=B.gorunen_ad)
     k = next(x for x in kayitlar if x["ad"] == ad)
     st.markdown(f"**Talep:** {k['metin']}")
     def kayit_onay():

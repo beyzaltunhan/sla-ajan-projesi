@@ -281,7 +281,18 @@ def bekleyen_onaylar(graf) -> list[dict]:
 
 
 # ------------------------------------------------------------------ örnekler (özgün; test setinden değil)
-DEMO1, DEMO2 = "Demo 1: Komutlu talep", "Demo 2: İhlalli P2 talep"
+DEMO1, DEMO2 = "Güvenlik: komut içeren talep", "SLA ihlali: onay gerektiren talep"
+_ESKI_AD = {"Demo 1: Komutlu talep": DEMO1, "Demo 2: İhlalli P2 talep": DEMO2}
+
+
+def gorunen_ad(ad: str) -> str:
+    """Kayıt/örnek adının ekranda görünen hali ("Demo N: " öneki yok); kayıt verisi değişmez."""
+    return _ESKI_AD.get(ad, ad)
+
+
+def onay_cumlesi_gizle(mesaj: str, karar_verildi: bool) -> str:
+    """Karar verildikten sonra ekrandan 'Yönetici onayı bekleniyor.' cümlesini çıkarır (veri aynı kalır)."""
+    return mesaj.replace(" Yönetici onayı bekleniyor.", "").rstrip() if karar_verildi else mesaj
 
 
 def gecmis_is_gunu(simdi: datetime, gun_once: int = 3, saat: int = 10) -> datetime:

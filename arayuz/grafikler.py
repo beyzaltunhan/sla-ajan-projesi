@@ -60,7 +60,7 @@ def tam_dogru_satirlari(r: dict) -> list[dict]:
                                ("Zor set", al(ilk, "Zor set"), al(sonra, "Zor set"), False),
                                ("Bağımsız 15", al(ilk, "Bağımsız 15"), al(sonra, "Bağımsız 15"), True)):
         satirlar.append({"ad": ad, "n": i[1], "ilk": i[0], "sonra": s[0], "alt_kume": alt_kume,
-                         "etiket": f"{ad} ({i[1]}) · {i[0]}/{i[1]} → {s[0]}/{s[1]}" + ("  (Ana+Zor'un alt kümesi)" if alt_kume else "")})
+                         "etiket": f"{ad}{'' if alt_kume else f' ({i[1]})'} · {i[0]}/{i[1]} → {s[0]}/{s[1]}" + ("  (Ana+Zor'un alt kümesi)" if alt_kume else "")})
     return satirlar
 
 
@@ -68,7 +68,7 @@ def tam_dogru_grafigi(r: dict):
     satirlar = tam_dogru_satirlari(r)
     veri = []
     for s in satirlar:
-        for kosu, k in (("İlk koşu", s["ilk"]), ("Düzeltme sonrası", s["sonra"])):
+        for kosu, k in (("İlk ölçüm", s["ilk"]), ("Düzeltme sonrası", s["sonra"])):
             lo, hi = wilson(k, s["n"])
             veri.append({"etiket": s["etiket"], "kosu": kosu, "oran": 100 * k / s["n"], "alt": 100 * lo, "ust": 100 * hi,
                          "alt_kume": s["alt_kume"], "yazi": f"%{virgul(100 * k / s['n'], 0)}", "sayi": f"{k}/{s['n']}"})
@@ -77,11 +77,11 @@ def tam_dogru_grafigi(r: dict):
     y = alt.Y("etiket:N", sort=sira, title=None, axis=alt.Axis(labelLimit=420, grid=True))
     x = alt.X("oran:Q", title="Tam doğru oran (%) · çizgi: %95 Wilson güven aralığı", scale=alt.Scale(domain=[0, 100]),
               axis=alt.Axis(values=[0, 20, 40, 60, 80, 100]))
-    renk = alt.Color("kosu:N", scale=alt.Scale(domain=["İlk koşu", "Düzeltme sonrası"], range=[ILK, SONRA]))
+    renk = alt.Color("kosu:N", scale=alt.Scale(domain=["İlk ölçüm", "Düzeltme sonrası"], range=[ILK, SONRA]))
     baglanti = (alt.Chart(df).transform_pivot("kosu", value="oran", groupby=["etiket"])
                 .mark_rule(color=METIN, strokeWidth=2, opacity=.55)
-                .encode(y=y, x=alt.X("İlk koşu:Q", scale=alt.Scale(domain=[0, 100])), x2="Düzeltme sonrası:Q"))
-    ci_ilk = (alt.Chart(df[df.kosu == "İlk koşu"]).mark_rule(strokeWidth=4, opacity=.35, yOffset=-7)
+                .encode(y=y, x=alt.X("İlk ölçüm:Q", scale=alt.Scale(domain=[0, 100])), x2="Düzeltme sonrası:Q"))
+    ci_ilk = (alt.Chart(df[df.kosu == "İlk ölçüm"]).mark_rule(strokeWidth=4, opacity=.35, yOffset=-7)
               .encode(y=y, x="alt:Q", x2="ust:Q", color=renk))
     ci_sonra = (alt.Chart(df[df.kosu == "Düzeltme sonrası"]).mark_rule(strokeWidth=4, opacity=.35, yOffset=7)
                 .encode(y=y, x="alt:Q", x2="ust:Q", color=renk))
@@ -89,7 +89,7 @@ def tam_dogru_grafigi(r: dict):
                   .encode(y=y, x=x, color=renk, tooltip=["etiket", "kosu", "sayi"]))
     nokta_bos = (alt.Chart(df[df.alt_kume]).mark_point(filled=False, size=130, strokeWidth=2.5)
                  .encode(y=y, x=x, color=renk, tooltip=["etiket", "kosu", "sayi"]))
-    yazi_ilk = (alt.Chart(df[df.kosu == "İlk koşu"]).mark_text(dy=-17, fontSize=12, color=ILK, fontWeight="bold")
+    yazi_ilk = (alt.Chart(df[df.kosu == "İlk ölçüm"]).mark_text(dy=-17, fontSize=12, color=ILK, fontWeight="bold")
                 .encode(y=y, x=x, text="yazi:N"))
     yazi_sonra = (alt.Chart(df[df.kosu == "Düzeltme sonrası"]).mark_text(dy=-17, fontSize=12, color=SONRA, fontWeight="bold")
                   .encode(y=y, x=x, text="yazi:N"))
@@ -108,7 +108,7 @@ def hata_turu_grafigi(satirlar: list[dict]):
     veri = []
     for s in satirlar:
         etiket = f"{s['ad']} · {s['ilk']} → {s['sonra']}"
-        veri += [{"etiket": etiket, "kosu": "İlk koşu", "adet": s["ilk"], "yazi": str(s["ilk"])},
+        veri += [{"etiket": etiket, "kosu": "İlk ölçüm", "adet": s["ilk"], "yazi": str(s["ilk"])},
                  {"etiket": etiket, "kosu": "Düzeltme sonrası", "adet": s["sonra"], "yazi": str(s["sonra"])}]
     df = pd.DataFrame(veri)
     sira = list(dict.fromkeys(df.etiket))
@@ -116,16 +116,16 @@ def hata_turu_grafigi(satirlar: list[dict]):
     y = alt.Y("etiket:N", sort=sira, title=None, axis=alt.Axis(labelLimit=380))
     x = alt.X("adet:Q", title="Hatalı talep sayısı (adım bazında)", scale=alt.Scale(domain=[0, en_cok + 1], nice=False, zero=True),
               axis=alt.Axis(tickMinStep=1, format="d"))
-    renk = alt.Color("kosu:N", scale=alt.Scale(domain=["İlk koşu", "Düzeltme sonrası"], range=[ILK, SONRA]))
+    renk = alt.Color("kosu:N", scale=alt.Scale(domain=["İlk ölçüm", "Düzeltme sonrası"], range=[ILK, SONRA]))
     baglanti = (alt.Chart(df).transform_pivot("kosu", value="adet", groupby=["etiket"]).mark_rule(color=METIN, strokeWidth=2, opacity=.55)
-                .encode(y=y, x=alt.X("İlk koşu:Q", scale=alt.Scale(domain=[0, en_cok + 1])), x2="Düzeltme sonrası:Q"))
+                .encode(y=y, x=alt.X("İlk ölçüm:Q", scale=alt.Scale(domain=[0, en_cok + 1])), x2="Düzeltme sonrası:Q"))
     nokta = alt.Chart(df).mark_point(filled=True, size=150, opacity=1).encode(y=y, x=x, color=renk, tooltip=["etiket", "kosu", "adet"])
     yazi = alt.Chart(df).mark_text(dy=-16, fontSize=13, fontWeight="bold").encode(y=y, x=x, text="yazi:N", color=renk)
     return _stil(alt.layer(baglanti, nokta, yazi), 70 + 70 * len(sira))
 
 
 # ------------------------------------------------------------------ 5) 59 kareli birim grafik
-DEGISIM_GRUPLARI = [("Düzeldi", SONRA), ("Bozuldu", VURGU), ("Hâlâ hatalı", METIN), ("İki koşuda da doğru", IZGARA)]
+DEGISIM_GRUPLARI = [("Düzeldi", SONRA), ("Bozuldu", VURGU), ("Hâlâ hatalı", METIN), ("İki ölçümde de doğru", IZGARA)]
 
 
 def degisim_gruplari(r: dict) -> dict[str, list[str]]:
@@ -134,11 +134,11 @@ def degisim_gruplari(r: dict) -> dict[str, list[str]]:
     tumu = [f"T{i:02d}" for i in range(1, n + 1)]
     duz, boz, hala = list(r["duzeldi"]), list(r["bozuldu"]), list(r["hala_hatali"])
     ayri = set(duz) | set(boz) | set(hala)
-    return {"Düzeldi": duz, "Bozuldu": boz, "Hâlâ hatalı": hala, "İki koşuda da doğru": [t for t in tumu if t not in ayri]}
+    return {"Düzeldi": duz, "Bozuldu": boz, "Hâlâ hatalı": hala, "İki ölçümde de doğru": [t for t in tumu if t not in ayri]}
 
 
 def birim_grafik(r: dict, sutun: int = 10):
-    """Her talep bir kare; satır satır gruplar (Düzeldi, Bozuldu, Hâlâ hatalı, İki koşuda da doğru). Üzerine gelince T numarası."""
+    """Her talep bir kare; satır satır gruplar (Düzeldi, Bozuldu, Hâlâ hatalı, İki ölçümde de doğru). Üzerine gelince T numarası."""
     gruplar = degisim_gruplari(r)
     renkler = dict(DEGISIM_GRUPLARI)
     veri, etiket_js, satir = [], {}, 0

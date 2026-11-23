@@ -45,7 +45,7 @@ def test_hata_turu_ve_degisim_sayilari():
     h = {x["ad"]: (x["ilk"], x["sonra"]) for x in G.hata_turu_satirlari(r, olcum.hata_adi)}
     assert h == {"1c Talep türü": (5, 1), "Öncelik önerisi": (5, 2)}
     g = G.degisim_gruplari(r)
-    assert [len(g[k]) for k in ("Düzeldi", "Bozuldu", "Hâlâ hatalı", "İki koşuda da doğru")] == [9, 2, 1, 47]
+    assert [len(g[k]) for k in ("Düzeldi", "Bozuldu", "Hâlâ hatalı", "İki ölçümde de doğru")] == [9, 2, 1, 47]
     assert sum(len(v) for v in g.values()) == 59 and len({t for v in g.values() for t in v}) == 59
 
 
@@ -76,3 +76,36 @@ def test_olcum_sekmesi_baslik_ve_ayrinti():
     assert "52,2 → 65,9 sn" in " ".join(m.value for m in at.markdown)
     assert any(e.label == "Ölçüm bilgisi" for e in at.expander)
     assert len(at.get("vega_lite_chart")) == 3
+
+
+# ---------------- FAZ 2.1
+def test_faz21_etiketler_ve_baglanti_cumlesi():
+    r = olcum.karsilastir()
+    et = [s["etiket"] for s in G.tam_dogru_satirlari(r)]
+    assert any(e.startswith("Bağımsız 15 · ") for e in et) and "(15)" not in " ".join(et)
+    assert any(e.startswith("Ana set (50)") for e in et)
+    def uyg():
+        from arayuz import bilesenler as b, stil
+        stil.uygula()
+        b.olcum_sekmesi()
+    at = AppTest.from_function(uyg, default_timeout=60).run()
+    assert not at.exception
+    metin = " ".join(c.value for c in at.caption) + " ".join(m.value for m in at.markdown)
+    d = len(G.degisim_gruplari(r)["İki ölçümde de doğru"])
+    assert f"İlk ölçümde doğru: {d} + {len(r['bozuldu'])} = {d + len(r['bozuldu'])}; düzeltme sonrası doğru: {d} + {len(r['duzeldi'])} = {d + len(r['duzeldi'])}." in metin
+    assert "İlk ölçümde doğru: 47 + 2 = 49" in metin and "47 + 9 = 56" in metin
+    assert "koşu" not in " ".join(c.value for c in at.caption)
+
+
+def test_faz21_karar_sonrasi_cumle_gizlenir():
+    from arayuz import bicimle as B
+    m = "Öncelik P2. Yönetici onayı bekleniyor."
+    assert B.onay_cumlesi_gizle(m, False) == m
+    assert B.onay_cumlesi_gizle(m, True) == "Öncelik P2."
+
+
+def test_faz21_ornek_adlari():
+    from arayuz import bicimle as B
+    assert B.gorunen_ad("Demo 1: Komutlu talep") == "Güvenlik: komut içeren talep"
+    assert B.gorunen_ad("Demo 2: İhlalli P2 talep") == "SLA ihlali: onay gerektiren talep"
+    assert not any(a.startswith("Demo") for a in B.ornekler(__import__("datetime").datetime.now()))

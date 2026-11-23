@@ -51,7 +51,7 @@ def test_davranis_basligi_teknik_durum_degil():
 def test_ornek_sirasi_ve_demo_adlari():
     o = B.ornekler(datetime(2026, 11, 23, 10, 0))
     adlar = list(o)
-    assert adlar[0] == "Demo 1: Komutlu talep" and adlar[1] == "Demo 2: İhlalli P2 talep"
+    assert adlar[0] == "Güvenlik: komut içeren talep" and adlar[1] == "SLA ihlali: onay gerektiren talep"
     assert o[B.DEMO1]["beklenen"] == "ENGELLE" and o[B.DEMO2]["beklenen"] == "HESAPLA"
     assert all(v["beklenen"] in ("ENGELLE", "HESAPLA", "BILMIYORUM", "SORU_SOR", "ONCELIK_BELIRLENEMEDI") for v in o.values())
 

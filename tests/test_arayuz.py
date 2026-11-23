@@ -106,7 +106,7 @@ def test_olcum_dosyalardan_okunur_ve_rapora_uyar():
         assert beklenen in rapor
     assert f"| Tam doğru — bağımsız 15 | {olcum.kn(*ilk['tam']['Bağımsız 15'])} | {olcum.kn(*sonra['tam']['Bağımsız 15'])} |" in rapor
     assert sorted(r["bozuldu"]) == ["T44", "T59"] and "T54" in r["hala_hatali"]
-    assert olcum.NOT.startswith("Düzeltme sonrası sayılar") and "temiz sayım ilk koşudur" in olcum.NOT
+    assert olcum.NOT.startswith("Düzeltme sonrası sayılar") and "temiz sayım ilk ölçümdür" in olcum.NOT
     assert olcum.rapor_oku(olcum.SONUCLAR / "yok.md") is None
 
 

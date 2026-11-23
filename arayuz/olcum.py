@@ -15,7 +15,7 @@ ILK_RAPOR = SONUCLAR / "ilk_kosu_rapor.md"
 SONRA_RAPOR = SONUCLAR / "duzeltme_sonrasi_rapor.md"
 
 NOT = ("Düzeltme sonrası sayılar, test hatalarının kategorisine bakılarak yapılan düzeltmelerden sonra alındı; "
-       "temiz sayım ilk koşudur.")
+       "temiz sayım ilk ölçümdür.")
 
 
 def _kosu(yol: Path, ad: str):
