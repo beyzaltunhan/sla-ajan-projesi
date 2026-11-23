@@ -18,9 +18,10 @@ Bu senaryo "makul bir kurumsal senaryo"dur; gerçek bir firmadaki sorunun kanıt
 **Tek bakışta mimari**
 
 - Model yalnızca dar işleri yapar (komut var mı, talep türü, firma adı, öncelik önerisi); süre, risk, kredi ve onay kodda hesaplanır.
-- Her model çıktısı şemayla doğrulanır; şemaya uymazsa bir kez yeniden denenir, olmazsa "işlenemedi" olarak yöneticiye gider.
+- Her model çıktısı şemayla doğrulanır; şemaya uymazsa ya da model çağrısı hata verirse bir kez yeniden denenir. Yine olmazsa talep ISLENEMEDI durumuyla işaretlenir; ajanın kendisi bildirim göndermez, bildirimi n8n akışı yazar.
 - Öncelik kuralı SLA dokümanlarından aramayla bulunur ve madde numarasıyla gösterilir; dokümanda yoksa "bilmiyorum" der.
 - Kritik kararlarda (ihlal, yüksek risk, P1, kredi önerisi) ajan durur ve insan onayı bekler; otomatik onay yoktur.
+- Araçlar: Python hesap araçları (`sla_araclari.py`) ajan akışının düğümlerinde çağrılır; hangi aracın ne zaman çağrılacağını model değil kod belirler. Bu bilinçli bir güvenlik tasarımıdır: model yalnızca dar yorum adımlarını yapar, araç seçmez. Aynı araçlar `mcp_sunucusu.py` ile MCP üzerinden standart bir arayüzle de açılır.
 
 ## Gereksinimler
 
@@ -309,6 +310,7 @@ Notlar:
 - Prototip kapsamı: talepler tek model üzerinde sırayla işlenir; onay sonrası işlemler kayıt olarak tutulur, dış sistem ve bildirimler simülasyondur.
 - MCP sunucusu gerçek bir MCP istemcisiyle (ör. Claude Desktop) denenmedi; yalnızca testlerde bir MCP istemci oturumuyla ve ayrı süreç olarak stdio üzerinden doğrulandı.
 - n8n akışında yalnızca ENGELLE ve ONAY_BEKLIYOR dalları canlı çalıştırıldı; diğer dallar yapısal testlerle doğrulandı, canlı çalıştırılmadı.
+- Ajan ISLENEMEDI/ONCELIK_BELIRLENEMEDI çıktılarında 'yöneticiye iletildi/iletilir' der; bu mesaj düzeyindedir. Ajan içinde yönetici kuyruğu ya da bildirim yoktur; bildirimi yalnızca n8n akışı (simülatöre) yazar.
 - Python 3.14.0 dışındaki sürümler ve farklı ortamlar denenmedi.
 
 ## Testler
