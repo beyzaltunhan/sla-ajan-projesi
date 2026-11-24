@@ -274,8 +274,7 @@ Invoke-RestMethod http://127.0.0.1:8000/bekleyen              # onay bekleyenler
 ```
 
 Notlar:
-- Container adı `sla-n8n`; dersten kalan eski `n8n` container'ından ayrıdır (ona dokunulmaz). İkisi de 5678'i kullanır:
-  eski container çalışırken `sla-n8n` başlamaz (port çakışması); biri durdurulmalıdır.
+- Container adı `sla-n8n`'dir. Aynı portu (5678) kullanan başka bir n8n container'ı çalışıyorsa `sla-n8n` başlamaz (port çakışması); önce onu durdurun.
 - Git Bash'te `docker exec` yollarında `MSYS_NO_PATHCONV=1` gerekir (yol dönüşümünü kapatmak için).
 - Veri Docker named volume'unda (`n8n_sla_n8n_veri`) durur, git'e girmez. Akışta kimlik bilgisi veya anahtar yoktur;
   `dis_sistem/sonuclar.json` git dışıdır; `dis_sistem/bildirimler.jsonl` iki sentetik örnek bildirimle repoda durur (n8n/simülatör çalışınca dosya değişir). `POST /sifirla` bu dosyaları siler (örnek bildirimler dahil) — sunumdan önce ÇALIŞTIRMAYIN.
@@ -283,7 +282,9 @@ Notlar:
 - Servis ve simülatörü `0.0.0.0`'da çalıştırmak onları yerel ağa açar; güvenilmeyen ağlarda kullanmayın.
 
 
-## Sunum günü
+## Demoyu çalıştırma
+
+Önerilen demo akışı aşağıdadır; model CPU'da çalıştığı için ilk adımlar süreyi doğrudan etkiler.
 
 1. Bilgisayarı **fişe takın**; Windows güç planını **"En iyi performans"** yapın (model CPU'da çalışır).
 2. **Ağır uygulamaları kapatın** (tarayıcı sekmeleri, müzik, sohbet uygulamaları): CPU yükü süreyi doğrudan artırır.
@@ -298,7 +299,7 @@ Notlar:
 8. Yedek plan: model ya da ağ sorunu olursa **Kayıtlı Çalıştırmalar** sekmesi (canlı değil, ekranda etiketli).
 
 > **UYARI:** Simülatörün `POST /sifirla` ucu `dis_sistem/bildirimler.jsonl` dosyasını (ve `sonuclar.json`'u) **siler**.
-> Bildirimler sekmesindeki iki örnek bildirim kaybolur; sunumdan önce **çalıştırmayın**.
+> Bildirimler sekmesindeki iki örnek bildirim kaybolur; demodan önce **çalıştırmayın**.
 
 ## Sınırlamalar
 
